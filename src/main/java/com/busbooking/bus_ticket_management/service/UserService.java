@@ -21,13 +21,15 @@ public class UserService {
     private final RoleRepository roles;
     private final PasswordResetTokenRepository tokens;
     private final PasswordEncoder encoder;
+    private final SecurityAuditService audit;
 
     public UserService(UserRepository users, RoleRepository roles,
-                       PasswordResetTokenRepository tokens, PasswordEncoder encoder) {
+                       PasswordResetTokenRepository tokens, PasswordEncoder encoder, SecurityAuditService audit) {
         this.users = users;
         this.roles = roles;
         this.tokens = tokens;
         this.encoder = encoder;
+        this.audit = audit;
     }
 
     public UserProfileResponse register(RegisterRequest request) {
@@ -52,7 +54,9 @@ public class UserService {
         user.setEnabled(true);
         try {
             // Catch concurrent registrations at the database unique constraint.
-            return toProfile(users.saveAndFlush(user));
+            users.saveAndFlush(user);
+            audit.record(user.getId(), SecurityEventType.REGISTERED);
+            return toProfile(user);
         } catch (DataIntegrityViolationException exception) {
             throw new UserAlreadyExistsException("email", "Tên đăng nhập hoặc email đã được sử dụng.");
         }
@@ -80,6 +84,7 @@ public class UserService {
         }
         try {
             users.saveAndFlush(user);
+            audit.record(user.getId(), SecurityEventType.PROFILE_UPDATED);
         } catch (DataIntegrityViolationException exception) {
             throw new UserAlreadyExistsException("email", "Email đã được sử dụng.");
         }
@@ -90,6 +95,7 @@ public class UserService {
         verifyCurrentPassword(user, request.getCurrentPassword());
         requireMatching(request.getNewPassword(), request.getConfirmPassword());
         replacePassword(user, request.getNewPassword());
+        audit.record(user.getId(), SecurityEventType.PASSWORD_CHANGED);
     }
 
     public void replacePassword(User user, String newPassword) {

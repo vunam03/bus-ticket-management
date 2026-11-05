@@ -24,16 +24,20 @@ public class AuthService {
     private final ResetMailService mail;
     private final Clock clock;
     private final String baseUrl;
+    private final SecurityAuditService audit;
+    private final LoginAttemptService attempts;
     private final SecureRandom random = new SecureRandom();
 
     public AuthService(UserRepository users, PasswordResetTokenRepository tokens,
-                       UserService userService, ResetMailService mail, Clock clock,
+                       UserService userService, ResetMailService mail, Clock clock, SecurityAuditService audit, LoginAttemptService attempts,
                        @Value("${app.base-url:http://localhost:8080}") String baseUrl) {
         this.users = users;
         this.tokens = tokens;
         this.userService = userService;
         this.mail = mail;
         this.clock = clock;
+        this.audit = audit;
+        this.attempts = attempts;
         this.baseUrl = baseUrl.replaceAll("/+$", "");
     }
 
@@ -59,6 +63,7 @@ public class AuthService {
         tokens.saveAndFlush(token);
         // Use configured origin, never the untrusted Host header.
         mail.sendPasswordReset(user.getEmail(), baseUrl + "/auth/reset-password?token=" + rawToken);
+        audit.record(user.getId(), SecurityEventType.PASSWORD_RESET_REQUESTED);
     }
 
     @Transactional(readOnly = true)
@@ -87,6 +92,8 @@ public class AuthService {
             throw invalidToken();
         }
         userService.replacePassword(user, request.getNewPassword());
+        attempts.succeeded(user.getUsername());
+        audit.record(user.getId(), SecurityEventType.PASSWORD_RESET);
     }
 
     @jakarta.persistence.PersistenceContext

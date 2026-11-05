@@ -28,6 +28,11 @@
             <div class="alert alert-info" th:if="${param.logout}">Bạn đã đăng xuất.</div>
             <div class="alert alert-warning" th:if="${param.expired}">Phiên đăng nhập đã thay đổi. Vui lòng đăng nhập lại.</div>
             <div class="alert alert-success" th:if="${param.passwordChanged}">Đã đổi mật khẩu. Vui lòng đăng nhập lại.</div>
+            <div class="alert alert-warning" role="alert" th:if="${retrySeconds > 0}">
+                Tạm chặn đăng nhập do nhập sai mật khẩu nhiều lần.
+                <strong data-lock-countdown th:attr="data-seconds=${retrySeconds}">Vui lòng thử lại sau.</strong>
+                Bạn vẫn có thể dùng chức năng quên mật khẩu.
+            </div>
             <form th:action="@{/auth/login}" th:object="${loginRequest}" method="post" data-validate>
 
                     <div class="field-group">

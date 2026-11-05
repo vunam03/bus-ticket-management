@@ -88,6 +88,8 @@
                 <button class="btn btn-primary w-100" type="submit">Lưu thông tin</button>
             </form>
             <div class="profile-actions">
+                <a th:href="@{/user/security/history}">Lịch sử bảo mật</a>
+                <a th:href="@{/user/security/sessions}">Phiên đăng nhập</a>
                 <a th:href="@{/user/change-password}">Đổi mật khẩu</a>
                 <a th:if="${profile.role == 'ADMIN'}" th:href="@{/admin/account}">Khu vực quản trị</a>
                 <form th:action="@{/auth/logout}" method="post"><button class="btn-link" type="submit">Đăng xuất</button></form>

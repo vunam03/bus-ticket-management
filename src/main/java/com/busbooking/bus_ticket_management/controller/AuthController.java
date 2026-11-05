@@ -27,7 +27,8 @@ public class AuthController {
     }
 
     @GetMapping("/login")
-    public String login(Model model) {
+    public String login(@RequestParam(defaultValue = "0") long retrySeconds, Model model) {
+        model.addAttribute("retrySeconds", Math.max(0, Math.min(retrySeconds, 900)));
         model.addAttribute("loginRequest", new LoginRequest());
         return "auth/login";
     }

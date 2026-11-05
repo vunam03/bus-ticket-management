@@ -28,10 +28,13 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, CustomUserDetailsService details,
-                                                   UserRepository users, Clock clock) throws Exception {
+                                                   UserRepository users, Clock clock,
+                                                   com.busbooking.bus_ticket_management.service.LoginAttemptService attempts,
+                                                   com.busbooking.bus_ticket_management.service.AccountSessionService sessions,
+                                                   AccountAuthenticationHandlers handlers) throws Exception {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider(details);
         provider.setPasswordEncoder(passwordEncoder());
-        http.authenticationProvider(provider)
+        http.authenticationProvider(new GuardedAuthenticationProvider(provider, attempts))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/", "/auth/**", "/css/**", "/js/**", "/error", "/favicon.ico").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
@@ -40,11 +43,12 @@ public class SecurityConfig {
                 .formLogin(form -> form
                         .loginPage("/auth/login")
                         .loginProcessingUrl("/auth/login")
-                        .defaultSuccessUrl("/user/profile", true)
-                        .failureUrl("/auth/login?error")
+                        .successHandler(handlers)
+                        .failureHandler(handlers)
                         .permitAll())
                 .logout(logout -> logout
                         .logoutUrl("/auth/logout")
+                        .addLogoutHandler(handlers)
                         .logoutSuccessUrl("/auth/login?logout")
                         .invalidateHttpSession(true)
                         .clearAuthentication(true)
@@ -57,7 +61,7 @@ public class SecurityConfig {
                                 org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter
                                         .ReferrerPolicy.NO_REFERRER)))
                 .addFilterBefore(new AuthRateLimitFilter(clock), UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(new CredentialVersionFilter(users), AuthorizationFilter.class);
+                .addFilterBefore(new CredentialVersionFilter(users, sessions), AuthorizationFilter.class);
         // Keep Spring Security's CSRF protection and secure default response headers.
         return http.build();
     }

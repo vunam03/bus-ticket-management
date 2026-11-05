@@ -40,6 +40,13 @@ class AccountModuleIntegrationTests {
     @Autowired RoleRepository roles;
     @Autowired PasswordResetTokenRepository tokens;
     @Autowired PasswordEncoder encoder;
+    @Autowired SecurityEventRepository auditRecords;
+    @Autowired AccountSessionRepository sessionRecords;
+    @Autowired LoginAttemptRepository attemptRecords;
+    @Autowired LoginAttemptService loginAttempts;
+    @Autowired SecurityAuditService auditService;
+    @Autowired AccountSessionService accountSessions;
+
     @Autowired CapturingMail mail;
     MockMvc mvc;
     String clientIp;
@@ -67,6 +74,9 @@ class AccountModuleIntegrationTests {
 
     @BeforeEach
     void setUp() {
+        auditRecords.deleteAll();
+        sessionRecords.deleteAll();
+        attemptRecords.deleteAll();
         tokens.deleteAll();
         users.deleteAll();
         mail.links.clear();
@@ -504,5 +514,270 @@ class AccountModuleIntegrationTests {
         mvc.perform(post("/auth/login").with(csrf()).param("username", "minh_test")
                         .param("password", PASSWORD))
                 .andExpect(redirectedUrl("/auth/login?error"));
+    }
+
+    @Test
+    void securityHistoryOnlyDisplaysTheCurrentUsersEvents() throws Exception {
+        User owner = createUser();
+        userService.register(registration("other_user", "other@example.com"));
+        User other = users.findByUsername("other_user").orElseThrow();
+        auditService.record(owner.getId(), SecurityEventType.PASSWORD_CHANGED);
+        auditService.record(other.getId(), SecurityEventType.ALL_SESSIONS_REVOKED);
+        MockHttpSession session = login();
+        var response = mvc.perform(get("/user/security/history").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Đổi mật khẩu")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Đăng nhập thành công")))
+                .andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        // The label also appears in filter options; check actual projected data for isolation.
+        var page = auditService.history(owner.getId(), null, 0);
+        assertThat(page.getContent()).noneMatch(event -> event.action().equals(
+                SecurityEventType.ALL_SESSIONS_REVOKED.getLabel()));
+        assertThat(response).doesNotContain("other@example.com");
+    }
+
+    @Test
+    void historySupportsFilteringPaginationAndEmptyState() throws Exception {
+        User owner = createUser();
+        for (int i = 0; i < 18; i++) auditService.record(owner.getId(), SecurityEventType.PROFILE_UPDATED);
+        MockHttpSession session = login();
+        assertThat(auditService.history(owner.getId(), SecurityEventType.PROFILE_UPDATED, 0).getSize()).isEqualTo(15);
+        assertThat(auditService.history(owner.getId(), SecurityEventType.PROFILE_UPDATED, 1).getNumberOfElements()).isEqualTo(3);
+        mvc.perform(get("/user/security/history").session(session)
+                        .param("type", "PROFILE_UPDATED").param("page", "1"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Trang 2 / 2")));
+        mvc.perform(get("/user/security/history").session(session).param("type", "ALL_SESSIONS_REVOKED"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Chưa có hoạt động phù hợp")));
+        mvc.perform(get("/user/security/history").session(session).param("page", "-5"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void historyDoesNotRenderInjectedUserAgentAsHtml() throws Exception {
+        createUser();
+        mvc.perform(post("/auth/login").with(csrf()).param("username", "minh_test")
+                        .param("password", PASSWORD).header("User-Agent", "<script>alert(1)</script>"))
+                .andExpect(redirectedUrl("/user/profile"));
+        MockHttpSession session = login();
+        mvc.perform(get("/user/security/history").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("<script>alert(1)</script>"))))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("&lt;script&gt;")));
+    }
+
+    @Test
+    void loginSuccessAndFailureAreRecordedWithoutSecrets() throws Exception {
+        User owner = createUser();
+        mvc.perform(post("/auth/login").with(csrf()).param("username", "minh_test")
+                        .param("password", "wrong-password"))
+                .andExpect(redirectedUrl("/auth/login?error"));
+        MockHttpSession session = login();
+        assertThat(auditService.history(owner.getId(), SecurityEventType.LOGIN_FAILED, 0).getTotalElements()).isEqualTo(1);
+        assertThat(auditService.history(owner.getId(), SecurityEventType.LOGIN_SUCCESS, 0).getTotalElements()).isEqualTo(1);
+        String response = mvc.perform(get("/user/security/history").session(session))
+                .andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        assertThat(response).doesNotContain(PASSWORD, "wrong-password", owner.getPassword(), "JSESSIONID", AuthService.digest(session.getId()));
+    }
+
+    @Test
+    void failedProfileUpdateDoesNotRecordSuccessfulChange() throws Exception {
+        User owner = createUser();
+        mvc.perform(post("/user/profile").session(login()).with(csrf())
+                        .param("fullName", "Không được lưu").param("email", "new@example.com")
+                        .param("currentPassword", "wrong"))
+                .andExpect(model().attributeHasFieldErrors("updateProfileRequest", "currentPassword"));
+        assertThat(auditService.history(owner.getId(), SecurityEventType.PROFILE_UPDATED, 0).getTotalElements()).isZero();
+    }
+
+    @Test
+    void sessionListShowsCurrentAndOtherSessionWithoutRawCookieIds() throws Exception {
+        createUser();
+        MockHttpSession first = login();
+        MockHttpSession second = login();
+        String html = mvc.perform(get("/user/security/sessions").session(second))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Phiên hiện tại")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Phiên khác")))
+                .andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        assertThat(html).doesNotContain("value=\"" + first.getId() + "\"",
+                "value=\"" + second.getId() + "\"", "JSESSIONID",
+                AuthService.digest(first.getId()), AuthService.digest(second.getId()));
+        assertThat(sessionRecords.findAll()).hasSize(2)
+                .allMatch(record -> record.getSessionHash().length() == 64);
+        var principal = new com.busbooking.bus_ticket_management.security.AccountPrincipal(users.findByUsername("minh_test").orElseThrow());
+        assertThat(accountSessions.active(principal, second)).hasSize(2)
+                .filteredOn(item -> item.current()).hasSize(1);
+    }
+
+    @Test
+    void ownerCanRevokeSpecificOtherSession() throws Exception {
+        User owner = createUser();
+        MockHttpSession first = login();
+        MockHttpSession second = login();
+        String id = sessionRecords.findBySessionHashAndUserId(AuthService.digest(first.getId()), owner.getId())
+                .orElseThrow().getId();
+        mvc.perform(post("/user/security/sessions/" + id + "/revoke").session(second).with(csrf()))
+                .andExpect(redirectedUrl("/user/security/sessions"));
+        mvc.perform(get("/user/profile").session(first)).andExpect(redirectedUrl("/auth/login?expired"));
+        mvc.perform(get("/user/profile").session(second)).andExpect(status().isOk());
+        assertThat(auditService.history(owner.getId(), SecurityEventType.SESSION_REVOKED, 0).getTotalElements()).isEqualTo(1);
+    }
+
+    @Test
+    void anotherUsersSessionCannotBeRevokedByGuessingItsManagementId() throws Exception {
+        User owner = createUser();
+        MockHttpSession ownersSession = login();
+        String id = sessionRecords.findBySessionHashAndUserId(AuthService.digest(ownersSession.getId()), owner.getId())
+                .orElseThrow().getId();
+        userService.register(registration("other_user", "other@example.com"));
+        MockHttpSession other = (MockHttpSession) mvc.perform(post("/auth/login").with(csrf())
+                        .param("username", "other_user").param("password", PASSWORD))
+                .andReturn().getRequest().getSession(false);
+        mvc.perform(post("/user/security/sessions/" + id + "/revoke").session(other).with(csrf()))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/user/profile").session(ownersSession)).andExpect(status().isOk());
+    }
+
+    @Test
+    void revokeOthersKeepsCurrentSession() throws Exception {
+        createUser();
+        MockHttpSession first = login();
+        MockHttpSession second = login();
+        mvc.perform(post("/user/security/sessions/revoke-others").session(second).with(csrf()))
+                .andExpect(redirectedUrl("/user/security/sessions"));
+        mvc.perform(get("/user/profile").session(first)).andExpect(redirectedUrl("/auth/login?expired"));
+        mvc.perform(get("/user/profile").session(second)).andExpect(status().isOk());
+    }
+
+    @Test
+    void revokeAllLogsOutCurrentAndOtherSessions() throws Exception {
+        createUser();
+        MockHttpSession first = login();
+        MockHttpSession second = login();
+        mvc.perform(post("/user/security/sessions/revoke-all").session(second).with(csrf()))
+                .andExpect(redirectedUrl("/auth/login?logout"));
+        assertThat(second.isInvalid()).isTrue();
+        mvc.perform(get("/user/profile").session(first)).andExpect(redirectedUrl("/auth/login?expired"));
+    }
+
+    @Test
+    void revokingCurrentSessionLogsOutImmediately() throws Exception {
+        User owner = createUser();
+        MockHttpSession current = login();
+        String id = sessionRecords.findBySessionHashAndUserId(AuthService.digest(current.getId()), owner.getId())
+                .orElseThrow().getId();
+        mvc.perform(post("/user/security/sessions/" + id + "/revoke").session(current).with(csrf()))
+                .andExpect(redirectedUrl("/auth/login?logout"));
+        assertThat(current.isInvalid()).isTrue();
+    }
+
+    @Test
+    void revocationNeedsCsrfAndExpiredSessionMetadataDeniesAccess() throws Exception {
+        User owner = createUser();
+        MockHttpSession current = login();
+        mvc.perform(post("/user/security/sessions/revoke-all").session(current)).andExpect(status().isForbidden());
+        var record = sessionRecords.findBySessionHashAndUserId(AuthService.digest(current.getId()), owner.getId())
+                .orElseThrow();
+        record.setExpiresAt(Instant.now().minusSeconds(1));
+        sessionRecords.saveAndFlush(record);
+        mvc.perform(get("/user/profile").session(current)).andExpect(redirectedUrl("/auth/login?expired"));
+    }
+
+    @Test
+    void fiveFailuresBlockEvenCorrectPasswordAndRemainBlockedAcrossClientIps() throws Exception {
+        createUser();
+        for (int i = 0; i < 5; i++) {
+            mvc.perform(post("/auth/login").with(csrf()).param("username", "MINH_TEST")
+                            .param("password", "incorrect"))
+                    .andExpect(status().is3xxRedirection());
+        }
+        assertThat(loginAttempts.remainingSeconds("minh_test")).isBetween(1L, 900L);
+        mvc.perform(post("/auth/login").with(csrf()).param("username", "minh_test")
+                        .param("password", PASSWORD).with(request -> {
+                            request.setRemoteAddr("another-client");
+                            return request;
+                        }))
+                .andExpect(redirectedUrlPattern("/auth/login?retrySeconds=*"));
+        assertThat(sessionRecords.count()).isZero();
+        mvc.perform(get("/auth/login").param("retrySeconds", "900"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-lock-countdown")));
+    }
+
+    @Test
+    void expiredLoginLockAllowsAuthenticationAndClearsCounter() throws Exception {
+        createUser();
+        for (int i = 0; i < 5; i++) loginAttempts.failed("minh_test");
+        var attempt = attemptRecords.findById(AuthService.digest("minh_test")).orElseThrow();
+        attempt.setLockedUntil(Instant.now().minusSeconds(1));
+        attemptRecords.saveAndFlush(attempt);
+        login();
+        assertThat(attemptRecords.existsById(AuthService.digest("minh_test"))).isFalse();
+    }
+
+    @Test
+    void successfulLoginResetsPreviousFailures() throws Exception {
+        createUser();
+        for (int i = 0; i < 4; i++) loginAttempts.failed("minh_test");
+        login();
+        assertThat(attemptRecords.count()).isZero();
+    }
+
+    @Test
+    void unknownNamesUseSameLockPolicyWithoutCreatingSecurityHistory() throws Exception {
+        for (int i = 0; i < 5; i++) {
+            mvc.perform(post("/auth/login").with(csrf()).param("username", "unknown_account")
+                            .param("password", "incorrect"))
+                    .andExpect(status().is3xxRedirection());
+        }
+        assertThat(loginAttempts.remainingSeconds("UNKNOWN_ACCOUNT")).isPositive();
+        assertThat(auditRecords.count()).isZero();
+        assertThat(attemptRecords.findAll()).allMatch(attempt ->
+                !attempt.getUsernameHash().contains("unknown_account"));
+    }
+
+    @Test
+    void passwordResetClearsTemporaryLoginBlock() throws Exception {
+        User owner = createUser();
+        for (int i = 0; i < 5; i++) loginAttempts.failed("minh_test");
+        auth.resetPassword(reset(issueToken()));
+        assertThat(loginAttempts.remainingSeconds("minh_test")).isZero();
+        mvc.perform(post("/auth/login").with(csrf()).param("username", "minh_test")
+                        .param("password", NEXT_PASSWORD))
+                .andExpect(redirectedUrl("/user/profile"));
+        assertThat(auditService.history(owner.getId(), SecurityEventType.PASSWORD_RESET, 0).getTotalElements()).isEqualTo(1);
+    }
+
+    @Test
+    void dailyMaintenanceDeletesOnlyExpiredAccountMetadata() throws Exception {
+        User owner = createUser();
+        MockHttpSession current = login();
+        SecurityEvent oldEvent = new SecurityEvent();
+        oldEvent.setUserId(owner.getId());
+        oldEvent.setType(SecurityEventType.LOGIN_FAILED);
+        oldEvent.setOccurredAt(Instant.now().minus(java.time.Duration.ofDays(100)));
+        auditRecords.saveAndFlush(oldEvent);
+        var expired = new AccountSession();
+        expired.setId(UUID.randomUUID().toString());
+        expired.setSessionHash(AuthService.digest("expired-test-session"));
+        expired.setUserId(owner.getId());
+        expired.setCreatedAt(Instant.now().minus(java.time.Duration.ofDays(3)));
+        expired.setLastSeenAt(expired.getCreatedAt());
+        expired.setExpiresAt(Instant.now().minus(java.time.Duration.ofDays(2)));
+        sessionRecords.saveAndFlush(expired);
+        loginAttempts.failed("stale_account");
+        var attempt = attemptRecords.findById(AuthService.digest("stale_account")).orElseThrow();
+        attempt.setWindowEndsAt(Instant.now().minus(java.time.Duration.ofDays(2)));
+        attemptRecords.saveAndFlush(attempt);
+        context.getBean(com.busbooking.bus_ticket_management.config.AccountMaintenanceConfig.class)
+                .cleanExpiredMetadata();
+        assertThat(auditRecords.existsById(oldEvent.getId())).isFalse();
+        assertThat(auditRecords.count()).isPositive();
+        assertThat(sessionRecords.existsById(expired.getId())).isFalse();
+        assertThat(attemptRecords.count()).isZero();
+        mvc.perform(get("/user/profile").session(current)).andExpect(status().isOk());
     }
 }

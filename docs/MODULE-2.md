@@ -146,8 +146,8 @@ Không trả trực tiếp entity User ra JSON vì entity chứa password hash.
 Dùng UserProfileResponse để hiển thị thông tin an toàn.
 Đổi role hoặc enabled được kiểm tra lại ở request tiếp theo.
 
-AccountHomeController tạm xử lý GET / và /admin/account.
-Khi nhóm có HomeController riêng, chỉ giữ một mapping GET /.
+AccountHomeController chỉ xử lý /admin/account. Module 2 không khai báo mapping GET /.
+index.html đã được trả về bản gốc để Module 3 phụ trách.
 Module 2 không triển khai CRUD chuyến xe, nhà xe hoặc đặt vé.
 
 ## Kiểm thử và trình bày bài
@@ -183,3 +183,71 @@ Giao diện dùng th:text để escape dữ liệu người dùng.
 
 Tài liệu kỹ thuật:
 [Spring Security — DaoAuthenticationProvider](https://www.springframework.org/spring-security/reference/servlet/authentication/passwords/dao-authentication-provider.html).
+
+
+## Mở rộng riêng Module 2
+
+Không thêm quản lý khách hàng ADMIN, dashboard, doanh thu, chuyến xe, ghế hoặc vé.
+Các tính năng dưới đây chỉ quản lý xác thực của chính chủ tài khoản.
+
+### Lịch sử bảo mật cá nhân
+
+- Đường dẫn GET /user/security/history, truy cập từ hồ sơ cá nhân.
+- Ghi nhận đăng ký, đăng nhập thành công/thất bại, tạm chặn đăng nhập, đăng xuất.
+- Ghi nhận cập nhật hồ sơ, đổi/reset mật khẩu và thu hồi phiên.
+- Lọc theo loại hoạt động; phân trang 15 bản ghi; sắp xếp mới nhất trước.
+- Thời gian được định dạng theo Asia/Ho_Chi_Minh.
+- Chủ tài khoản chỉ truy vấn được lịch sử theo ID lấy từ principal đăng nhập.
+- Không nhận userId từ URL/form để chọn tài khoản.
+- Không lưu mật khẩu, hash mật khẩu, token reset hoặc JSESSIONID trong nhật ký.
+- Chỉ lưu loại hoạt động, thời điểm, địa chỉ IP và User-Agent rút gọn.
+- Dữ liệu nhập từ trình duyệt được escape khi hiển thị.
+- Hoạt động cập nhật thất bại không bị ghi thành cập nhật thành công.
+- Giữ lịch sử 90 ngày; dọn hàng ngày lúc 03:15 theo giờ Việt Nam.
+
+### Quản lý phiên đăng nhập
+
+- GET /user/security/sessions: xem các phiên của mình và nhận biết phiên hiện tại.
+- POST /user/security/sessions/{id}/revoke: thu hồi một phiên thuộc tài khoản.
+- POST /user/security/sessions/revoke-others: giữ phiên hiện tại, thu hồi các phiên khác.
+- POST /user/security/sessions/revoke-all: thu hồi tất cả, đăng xuất cả phiên hiện tại.
+- Các thao tác POST có CSRF và hộp xác nhận trên giao diện.
+- UUID dùng để quản lý phiên là mã độc lập, không phải JSESSIONID.
+- Database chỉ lưu SHA-256 của JSESSIONID, không lưu cookie có thể dùng để đăng nhập.
+- Truy vấn thu hồi luôn kèm userId của chủ tài khoản để chống truy cập chéo.
+- Phiên bị thu hồi bị chặn ở request tiếp theo, không cần chờ hết hạn cookie.
+- Mỗi request xác thực cập nhật lastSeen/expiresAt mà không ghi đè trạng thái đã thu hồi.
+- Phiên hết hạn không được gia hạn lại bằng một request đến muộn.
+- Khi đổi/reset mật khẩu, credentialVersion làm các phiên cũ mất hiệu lực.
+- Phiên HttpSession thật vẫn thuộc bộ nhớ một instance; thông tin quản lý được lưu database.
+- Khởi động lại ứng dụng yêu cầu đăng nhập lại; bản ghi cũ hết hạn được dọn tự động.
+
+### Chống dò mật khẩu theo tài khoản
+
+- Nhập sai 5 lần trong cửa sổ 15 phút thì tạm chặn đăng nhập 15 phút.
+- Giữ nguyên enabled của User: khóa tạm đăng nhập khác với khóa tài khoản.
+- Đổi IP không bỏ qua được chặn theo username.
+- Chuẩn hóa tên đăng nhập để tránh tách bộ đếm bằng chữ hoa/thường.
+- Tên không tồn tại cũng có cùng chính sách chặn và thông báo.
+- Chỉ lưu digest tên đăng nhập trong bảng bộ đếm.
+- Lưu database để khởi động lại không làm mất khóa tạm.
+- Trang đăng nhập có bộ đếm thời gian thử lại; máy chủ mới là nơi kiểm tra khóa.
+- Đăng nhập thành công xóa số lần sai trước đó.
+- Reset mật khẩu bằng link hợp lệ gỡ khóa tạm.
+- Giới hạn theo IP của bản trước vẫn hoạt động song song.
+- Striped lock trong tiến trình tuần tự hóa thử đăng nhập cùng username.
+  Khi chuyển sang nhiều instance, cần khóa phân tán cho bộ đếm này.
+
+### Bảng và file bổ sung
+
+- account_security_events: SecurityEvent, SecurityEventType, SecurityEventRepository.
+- account_sessions: AccountSession, AccountSessionRepository.
+- account_login_attempts: LoginAttempt, LoginAttemptRepository.
+- SecurityAuditService, AccountSessionService, LoginAttemptService.
+- GuardedAuthenticationProvider, AccountAuthenticationHandlers.
+- AccountSecurityController, AccountMaintenanceConfig.
+- SecurityEventResponse, AccountSessionResponse.
+- user/security-history.html, user/sessions.html.
+
+Bảng mới không thay đổi schema nghiệp vụ của BusTrip, BusCompany, Seat, Ticket
+hoặc PaymentTransaction. index.html giữ nguyên bản gốc.

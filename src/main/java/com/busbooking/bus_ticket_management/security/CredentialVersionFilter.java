@@ -12,9 +12,12 @@ import java.util.Objects;
 /** Revoke existing sessions after password change/reset, disablement or role change. */
 public class CredentialVersionFilter extends OncePerRequestFilter {
     private final UserRepository users;
+    private final com.busbooking.bus_ticket_management.service.AccountSessionService sessions;
 
-    public CredentialVersionFilter(UserRepository users) {
+    public CredentialVersionFilter(UserRepository users,
+            com.busbooking.bus_ticket_management.service.AccountSessionService sessions) {
         this.users = users;
+        this.sessions = sessions;
     }
 
     @Override
@@ -29,6 +32,7 @@ public class CredentialVersionFilter extends OncePerRequestFilter {
                     .filter(user -> principal.getAuthorities().stream().anyMatch(authority ->
                             authority.getAuthority().equals("ROLE_" + user.getRole().getName())))
                     .isPresent();
+            valid = valid && sessions.touch(principal, request.getSession(false));
             if (!valid) {
                 var session = request.getSession(false);
                 if (session != null) {

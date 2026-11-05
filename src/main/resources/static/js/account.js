@@ -82,3 +82,32 @@ document.addEventListener("DOMContentLoaded", () => {
     const firstError = document.querySelector("input.is-invalid");
     if (firstError) firstError.focus();
 });
+
+
+document.addEventListener("DOMContentLoaded", () => {
+    // Confirm only destructive session actions, without changing the normal account forms.
+    document.querySelectorAll("form[data-confirm]").forEach(form => {
+        form.addEventListener("submit", event => {
+            if (!window.confirm(form.dataset.confirm)) event.preventDefault();
+        });
+    });
+
+    document.querySelectorAll("[data-lock-countdown]").forEach(element => {
+        let seconds = Math.max(0, Number(element.dataset.seconds) || 0);
+        const render = () => {
+            if (seconds <= 0) {
+                element.textContent = "Bạn có thể thử đăng nhập lại.";
+                return;
+            }
+            const minutes = Math.floor(seconds / 60);
+            const remainder = String(seconds % 60).padStart(2, "0");
+            element.textContent = "Thử lại sau " + minutes + ":" + remainder + ".";
+        };
+        render();
+        const timer = window.setInterval(() => {
+            seconds = Math.max(0, seconds - 1);
+            render();
+            if (seconds === 0) window.clearInterval(timer);
+        }, 1000);
+    });
+});
