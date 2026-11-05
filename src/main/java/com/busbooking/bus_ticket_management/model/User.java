@@ -39,6 +39,10 @@ public class User {
     @Column(nullable = false)
     private boolean enabled = true;
 
+    // SQL default preserves legacy accounts; new Java accounts start unverified.
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private boolean emailVerified;
+
     @Column(nullable = false)
     private long credentialVersion;
 
@@ -150,5 +154,12 @@ public class User {
     @PreUpdate
     void onUpdate() {
         updatedAt = Instant.now();
+    }
+    public boolean getEmailVerified() {
+        return emailVerified;
+    }
+
+    public void setEmailVerified(boolean emailVerified) {
+        this.emailVerified = emailVerified;
     }
 }

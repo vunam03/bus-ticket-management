@@ -24,7 +24,7 @@ public class AccountPrincipal implements UserDetails, CredentialsContainer {
         id = user.getId();
         username = user.getUsername();
         password = user.getPassword();
-        enabled = user.getEnabled();
+        enabled = user.getEnabled() && user.getEmailVerified();
         credentialVersion = user.getCredentialVersion();
         authorities = List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().getName()));
     }

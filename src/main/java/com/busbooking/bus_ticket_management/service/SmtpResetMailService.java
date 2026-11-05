@@ -22,16 +22,26 @@ public class SmtpResetMailService implements ResetMailService {
 
     @Override
     public void sendPasswordReset(String email, String resetUrl) {
+        send(email, "Đặt lại mật khẩu", "Link hiệu lực 15 phút và dùng một lần.\n\n"
+                + resetUrl + "\n\nNếu không phải bạn yêu cầu, hãy bỏ qua thư này.");
+    }
+
+    @Override
+    public void sendEmailVerification(String email, String verificationUrl, boolean emailChange) {
+        String title = emailChange ? "Xác nhận địa chỉ email mới" : "Xác thực email đăng ký";
+        send(email, title, "Link hiệu lực " + (emailChange ? "30 phút" : "24 giờ")
+                + ", chỉ dùng một lần.\nMở link rồi bấm Xác nhận email để hoàn tất.\n\n"
+                + verificationUrl + "\n\nNếu không phải bạn yêu cầu, hãy bỏ qua thư này.");
+    }
+
+    private void send(String email, String subject, String body) {
         JavaMailSender configured = sender.getIfAvailable();
-        if (configured == null) {
-            throw new IllegalStateException("SMTP chưa được cấu hình.");
-        }
+        if (configured == null) throw new IllegalStateException("SMTP chưa được cấu hình.");
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(from);
         message.setTo(email);
-        message.setSubject("BusBooking - Đặt lại mật khẩu");
-        message.setText("Link có hiệu lực 15 phút và chỉ dùng một lần.\n\n"
-                + resetUrl + "\n\nNếu không phải bạn yêu cầu, hãy bỏ qua email này.");
+        message.setSubject("BusBooking - " + subject);
+        message.setText(body);
         configured.send(message);
     }
 }

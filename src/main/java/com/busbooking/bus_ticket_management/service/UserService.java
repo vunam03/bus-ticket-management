@@ -22,14 +22,17 @@ public class UserService {
     private final PasswordResetTokenRepository tokens;
     private final PasswordEncoder encoder;
     private final SecurityAuditService audit;
+    private final EmailVerificationService emailVerification;
 
     public UserService(UserRepository users, RoleRepository roles,
-                       PasswordResetTokenRepository tokens, PasswordEncoder encoder, SecurityAuditService audit) {
+                       PasswordResetTokenRepository tokens, PasswordEncoder encoder,
+                       SecurityAuditService audit, EmailVerificationService emailVerification) {
         this.users = users;
         this.roles = roles;
         this.tokens = tokens;
         this.encoder = encoder;
         this.audit = audit;
+        this.emailVerification = emailVerification;
     }
 
     public UserProfileResponse register(RegisterRequest request) {
@@ -52,10 +55,12 @@ public class UserService {
         user.setRole(roles.findByName(Role.CUSTOMER).orElseThrow(
                 () -> new IllegalStateException("Chưa khởi tạo quyền CUSTOMER.")));
         user.setEnabled(true);
+        user.setEmailVerified(false);
         try {
             // Catch concurrent registrations at the database unique constraint.
             users.saveAndFlush(user);
             audit.record(user.getId(), SecurityEventType.REGISTERED);
+            emailVerification.sendRegistration(user);
             return toProfile(user);
         } catch (DataIntegrityViolationException exception) {
             throw new UserAlreadyExistsException("email", "Tên đăng nhập hoặc email đã được sử dụng.");
@@ -76,11 +81,11 @@ public class UserService {
         }
         boolean changedEmail = !user.getEmail().equals(email);
         user.setFullName(request.getFullName().strip());
-        user.setEmail(email);
+
         user.setPhone(clean(request.getPhone()));
         user.setAddress(clean(request.getAddress()));
         if (changedEmail) {
-            tokens.invalidateForUser(user.getId());
+            emailVerification.requestEmailChange(user, email);
         }
         try {
             users.saveAndFlush(user);
@@ -105,6 +110,7 @@ public class UserService {
         user.setPassword(encoder.encode(newPassword));
         user.setCredentialVersion(user.getCredentialVersion() + 1);
         tokens.invalidateForUser(user.getId());
+        emailVerification.invalidateForUser(user.getId());
         users.saveAndFlush(user);
     }
 
@@ -156,6 +162,8 @@ public class UserService {
         result.setRole(user.getRole().getName());
         result.setEnabled(user.getEnabled());
         result.setCreatedAt(user.getCreatedAt());
+        result.setEmailVerified(user.getEmailVerified());
+        result.setPendingEmail(emailVerification.pendingEmail(user));
         return result;
     }
 }

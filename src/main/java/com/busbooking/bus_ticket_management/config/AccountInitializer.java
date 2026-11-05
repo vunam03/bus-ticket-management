@@ -67,6 +67,7 @@ public class AccountInitializer implements CommandLineRunner {
         user.setPassword(encoder.encode(password));
         user.setRole(admin);
         user.setEnabled(true);
+        user.setEmailVerified(true); // Trusted administrator created from operator configuration.
         users.saveAndFlush(user);
     }
 

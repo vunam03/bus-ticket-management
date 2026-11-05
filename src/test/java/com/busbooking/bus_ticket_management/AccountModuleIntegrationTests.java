@@ -46,6 +46,8 @@ class AccountModuleIntegrationTests {
     @Autowired LoginAttemptService loginAttempts;
     @Autowired SecurityAuditService auditService;
     @Autowired AccountSessionService accountSessions;
+    @Autowired EmailVerificationService emailVerification;
+    @Autowired EmailVerificationTokenRepository emailTokens;
 
     @Autowired CapturingMail mail;
     MockMvc mvc;
@@ -64,7 +66,15 @@ class AccountModuleIntegrationTests {
 
     static class CapturingMail implements ResetMailService {
         final List<String> links = new CopyOnWriteArrayList<>();
+        final List<String> verificationLinks = new CopyOnWriteArrayList<>();
+        final List<String> verificationRecipients = new CopyOnWriteArrayList<>();
         boolean fail;
+        @Override
+        public void sendEmailVerification(String email, String url, boolean emailChange) {
+            if (fail) throw new IllegalStateException("Simulated delivery failure");
+            verificationLinks.add(url);
+            verificationRecipients.add(email);
+        }
         @Override
         public void sendPasswordReset(String email, String url) {
             if (fail) throw new IllegalStateException("Simulated delivery failure");
@@ -77,9 +87,12 @@ class AccountModuleIntegrationTests {
         auditRecords.deleteAll();
         sessionRecords.deleteAll();
         attemptRecords.deleteAll();
+        emailTokens.deleteAll();
         tokens.deleteAll();
         users.deleteAll();
         mail.links.clear();
+        mail.verificationLinks.clear();
+        mail.verificationRecipients.clear();
         mail.fail = false;
         clientIp = UUID.randomUUID().toString();
         mvc = MockMvcBuilders.webAppContextSetup(context)
@@ -103,8 +116,18 @@ class AccountModuleIntegrationTests {
         return request;
     }
 
+    String lastEmailToken() {
+        String url = mail.verificationLinks.get(mail.verificationLinks.size() - 1);
+        return url.substring(url.indexOf("token=") + 6);
+    }
+
+    void registerVerified(RegisterRequest request) {
+        userService.register(request);
+        emailVerification.confirm(lastEmailToken());
+    }
+
     User createUser() {
-        userService.register(registration("minh_test", "minh@example.com"));
+        registerVerified(registration("minh_test", "minh@example.com"));
         return users.findByUsername("minh_test").orElseThrow();
     }
 
@@ -174,11 +197,11 @@ class AccountModuleIntegrationTests {
 
     @Test
     void usernamesAndEmailsAreNormalizedAndUnique() {
-        userService.register(registration("MiNh_Test", "MINH@EXAMPLE.COM"));
+        registerVerified(registration("MiNh_Test", "MINH@EXAMPLE.COM"));
         assertThat(users.findByUsername("minh_test")).isPresent();
-        assertThatThrownBy(() -> userService.register(registration("MINH_TEST", "other@example.com")))
+        assertThatThrownBy(() -> registerVerified(registration("MINH_TEST", "other@example.com")))
                 .isInstanceOf(UserAlreadyExistsException.class);
-        assertThatThrownBy(() -> userService.register(registration("someone", "minh@example.com")))
+        assertThatThrownBy(() -> registerVerified(registration("someone", "minh@example.com")))
                 .isInstanceOf(UserAlreadyExistsException.class);
     }
 
@@ -282,14 +305,17 @@ class AccountModuleIntegrationTests {
                         .param("username", "attacker"))
                 .andExpect(redirectedUrl("/user/profile"));
         User saved = users.findByUsername("minh_test").orElseThrow();
-        assertThat(saved.getEmail()).isEqualTo("changed@example.com");
+        assertThat(saved.getEmail()).isEqualTo("minh@example.com");
+        assertThat(userService.profile("minh_test").getPendingEmail()).isEqualTo("changed@example.com");
+        emailVerification.confirm(lastEmailToken());
+        assertThat(users.findByUsername("minh_test").orElseThrow().getEmail()).isEqualTo("changed@example.com");
         assertThat(saved.getRole().getName()).isEqualTo(Role.CUSTOMER);
     }
 
     @Test
     void profileCannotTakeAnotherAccountsEmail() throws Exception {
         createUser();
-        userService.register(registration("other_user", "other@example.com"));
+        registerVerified(registration("other_user", "other@example.com"));
         mvc.perform(post("/user/profile").session(login()).with(csrf())
                         .param("fullName", "Tên mới").param("email", "other@example.com")
                         .param("currentPassword", PASSWORD))
@@ -391,6 +417,8 @@ class AccountModuleIntegrationTests {
         update.setEmail("new@example.com");
         update.setCurrentPassword(PASSWORD);
         userService.updateProfile("minh_test", update);
+        assertThat(auth.isResetTokenValid(token)).isTrue();
+        emailVerification.confirm(lastEmailToken());
         assertThat(auth.isResetTokenValid(token)).isFalse();
     }
 
@@ -488,6 +516,7 @@ class AccountModuleIntegrationTests {
         initializer.run();
         User admin = users.findByUsername("admin_test").orElseThrow();
         assertThat(admin.getRole().getName()).isEqualTo(Role.ADMIN);
+        assertThat(admin.getEmailVerified()).isTrue();
         assertThat(encoder.matches(PASSWORD, admin.getPassword())).isTrue();
         var collision = new com.busbooking.bus_ticket_management.config.AccountInitializer(
                 roles, users, encoder, "minh_test", "minh@example.com", PASSWORD);
@@ -519,7 +548,7 @@ class AccountModuleIntegrationTests {
     @Test
     void securityHistoryOnlyDisplaysTheCurrentUsersEvents() throws Exception {
         User owner = createUser();
-        userService.register(registration("other_user", "other@example.com"));
+        registerVerified(registration("other_user", "other@example.com"));
         User other = users.findByUsername("other_user").orElseThrow();
         auditService.record(owner.getId(), SecurityEventType.PASSWORD_CHANGED);
         auditService.record(other.getId(), SecurityEventType.ALL_SESSIONS_REVOKED);
@@ -632,7 +661,7 @@ class AccountModuleIntegrationTests {
         MockHttpSession ownersSession = login();
         String id = sessionRecords.findBySessionHashAndUserId(AuthService.digest(ownersSession.getId()), owner.getId())
                 .orElseThrow().getId();
-        userService.register(registration("other_user", "other@example.com"));
+        registerVerified(registration("other_user", "other@example.com"));
         MockHttpSession other = (MockHttpSession) mvc.perform(post("/auth/login").with(csrf())
                         .param("username", "other_user").param("password", PASSWORD))
                 .andReturn().getRequest().getSession(false);
@@ -779,5 +808,240 @@ class AccountModuleIntegrationTests {
         assertThat(sessionRecords.existsById(expired.getId())).isFalse();
         assertThat(attemptRecords.count()).isZero();
         mvc.perform(get("/user/profile").session(current)).andExpect(status().isOk());
+    }
+
+    UpdateProfileRequest emailUpdate(String target) {
+        UpdateProfileRequest request = new UpdateProfileRequest();
+        request.setFullName("Bùi Lê Minh");
+        request.setEmail(target);
+        request.setCurrentPassword(PASSWORD);
+        return request;
+    }
+
+    @Test
+    void newSignupNeedsEmailProofAndCannotSelfVerifyThroughForm() throws Exception {
+        mvc.perform(validRegistrationPost().param("emailVerified", "true"))
+                .andExpect(redirectedUrl("/auth/login"));
+        User saved = users.findByUsername("new_user").orElseThrow();
+        assertThat(saved.getEmailVerified()).isFalse();
+        assertThat(mail.verificationRecipients).containsExactly("new@example.com");
+        EmailVerificationToken token = emailTokens.findAll().get(0);
+        assertThat(token.getPurpose()).isEqualTo(EmailTokenPurpose.REGISTRATION);
+        assertThat(token.getTokenHash()).isEqualTo(AuthService.digest(lastEmailToken()))
+                .isNotEqualTo(lastEmailToken());
+        mvc.perform(post("/auth/login").with(csrf()).param("username", "new_user")
+                        .param("password", PASSWORD))
+                .andExpect(redirectedUrl("/auth/login?error"));
+        assertThat(sessionRecords.count()).isZero();
+    }
+
+    @Test
+    void confirmationGetDoesNotVerifyAndPostRequiresCsrf() throws Exception {
+        userService.register(registration("minh_test", "minh@example.com"));
+        String raw = lastEmailToken();
+        mvc.perform(get("/auth/verify-email").param("token", raw))
+                .andExpect(status().isOk()).andExpect(model().attribute("tokenValid", true));
+        assertThat(users.findByUsername("minh_test").orElseThrow().getEmailVerified()).isFalse();
+        mvc.perform(post("/auth/verify-email").param("token", raw)).andExpect(status().isForbidden());
+        mvc.perform(post("/auth/verify-email").with(csrf()).param("token", raw))
+                .andExpect(redirectedUrl("/auth/login?emailVerified"));
+        assertThat(users.findByUsername("minh_test").orElseThrow().getEmailVerified()).isTrue();
+        login();
+    }
+
+    @Test
+    void verificationLinkCannotBeReusedOrUsedForPasswordReset() {
+        userService.register(registration("minh_test", "minh@example.com"));
+        String raw = lastEmailToken();
+        assertThat(auth.isResetTokenValid(raw)).isFalse();
+        emailVerification.confirm(raw);
+        assertThat(emailVerification.isValid(raw)).isFalse();
+        assertThatThrownBy(() -> emailVerification.confirm(raw))
+                .isInstanceOf(InvalidEmailVerificationException.class);
+    }
+
+    @Test
+    void expiredAndMalformedVerificationLinksCannotActivateAccount() throws Exception {
+        userService.register(registration("minh_test", "minh@example.com"));
+        String raw = lastEmailToken();
+        var token = emailTokens.findByTokenHash(AuthService.digest(raw)).orElseThrow();
+        token.setExpiresAt(Instant.now().minusSeconds(1));
+        emailTokens.saveAndFlush(token);
+        assertThat(emailVerification.isValid(raw)).isFalse();
+        assertThatThrownBy(() -> emailVerification.confirm(raw))
+                .isInstanceOf(InvalidEmailVerificationException.class);
+        mvc.perform(get("/auth/verify-email").param("token", "bad"))
+                .andExpect(status().isOk()).andExpect(model().attribute("tokenValid", false));
+        assertThat(users.findByUsername("minh_test").orElseThrow().getEmailVerified()).isFalse();
+    }
+
+    @Test
+    void resendHasCooldownAndReplacesPreviousLink() throws Exception {
+        userService.register(registration("minh_test", "minh@example.com"));
+        String first = lastEmailToken();
+        emailVerification.resendRegistration("MINH@EXAMPLE.COM");
+        assertThat(mail.verificationLinks).hasSize(1);
+        var token = emailTokens.findByTokenHash(AuthService.digest(first)).orElseThrow();
+        token.setCreatedAt(Instant.now().minusSeconds(61));
+        emailTokens.saveAndFlush(token);
+        mvc.perform(post("/auth/resend-verification").with(csrf()).param("email", "minh@example.com"))
+                .andExpect(redirectedUrl("/auth/resend-verification"))
+                .andExpect(flash().attribute("successMessage", EmailVerificationService.RESEND_RESPONSE));
+        assertThat(mail.verificationLinks).hasSize(2);
+        assertThat(emailVerification.isValid(first)).isFalse();
+        assertThat(emailVerification.isValid(lastEmailToken())).isTrue();
+    }
+
+    @Test
+    void resendNeverDisclosesUnknownOrVerifiedEmails() throws Exception {
+        createUser();
+        int count = mail.verificationLinks.size();
+        for (String email : List.of("minh@example.com", "unknown@example.com")) {
+            mvc.perform(post("/auth/resend-verification").with(csrf()).param("email", email))
+                    .andExpect(redirectedUrl("/auth/resend-verification"))
+                    .andExpect(flash().attribute("successMessage", EmailVerificationService.RESEND_RESPONSE));
+        }
+        assertThat(mail.verificationLinks).hasSize(count);
+        mvc.perform(get("/auth/resend-verification")).andExpect(status().isOk());
+        mvc.perform(post("/auth/resend-verification").with(csrf()).param("email", "bad"))
+                .andExpect(model().attributeHasFieldErrors("emailVerificationRequest", "email"));
+    }
+
+    @Test
+    void registrationMailFailureRollsBackAccountAndVerificationToken() throws Exception {
+        mail.fail = true;
+        mvc.perform(validRegistrationPost())
+                .andExpect(status().isOk())
+                .andExpect(model().attributeHasFieldErrors("registerRequest", "email"));
+        assertThat(users.count()).isZero();
+        assertThat(emailTokens.count()).isZero();
+    }
+
+    @Test
+    void changingEmailKeepsOriginalUntilNewMailboxIsProven() throws Exception {
+        createUser();
+        MockHttpSession session = login();
+        userService.updateProfile("minh_test", emailUpdate("new@example.com"));
+        String raw = lastEmailToken();
+        assertThat(mail.verificationRecipients.get(mail.verificationRecipients.size() - 1))
+                .isEqualTo("new@example.com");
+        assertThat(users.findByUsername("minh_test").orElseThrow().getEmail()).isEqualTo("minh@example.com");
+        mvc.perform(get("/user/profile").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Đang chờ xác nhận email mới")));
+        mvc.perform(post("/auth/verify-email").session(session).with(csrf()).param("token", raw))
+                .andExpect(redirectedUrl("/auth/login?emailChanged"));
+        assertThat(session.isInvalid()).isTrue();
+        assertThat(users.findByUsername("minh_test").orElseThrow().getEmail()).isEqualTo("new@example.com");
+        assertThat(userService.profile("minh_test").getPendingEmail()).isNull();
+    }
+
+    @Test
+    void confirmedEmailChangeRevokesAllExistingSessionsAndOldResetLinks() throws Exception {
+        createUser();
+        MockHttpSession first = login();
+        MockHttpSession second = login();
+        String reset = issueToken();
+        userService.updateProfile("minh_test", emailUpdate("new@example.com"));
+        emailVerification.confirm(lastEmailToken());
+        assertThat(auth.isResetTokenValid(reset)).isFalse();
+        mvc.perform(get("/user/profile").session(first)).andExpect(redirectedUrl("/auth/login?expired"));
+        mvc.perform(get("/user/profile").session(second)).andExpect(redirectedUrl("/auth/login?expired"));
+    }
+
+    @Test
+    void cancellationKeepsOriginalAndInvalidatesPendingLink() throws Exception {
+        createUser();
+        MockHttpSession session = login();
+        userService.updateProfile("minh_test", emailUpdate("new@example.com"));
+        String raw = lastEmailToken();
+        mvc.perform(post("/user/email-change/cancel").session(session).with(csrf()))
+                .andExpect(redirectedUrl("/user/profile"));
+        assertThat(emailVerification.isValid(raw)).isFalse();
+        assertThat(userService.profile("minh_test").getPendingEmail()).isNull();
+        assertThat(users.findByUsername("minh_test").orElseThrow().getEmail()).isEqualTo("minh@example.com");
+        mvc.perform(get("/user/profile").session(session)).andExpect(status().isOk());
+    }
+
+    @Test
+    void twoAccountsCannotClaimTheSameEmailAtConfirmation() {
+        createUser();
+        userService.updateProfile("minh_test", emailUpdate("shared@example.com"));
+        String pending = lastEmailToken();
+        registerVerified(registration("other_user", "shared@example.com"));
+        assertThatThrownBy(() -> emailVerification.confirm(pending))
+                .isInstanceOf(InvalidEmailVerificationException.class);
+        assertThat(users.findByUsername("minh_test").orElseThrow().getEmail()).isEqualTo("minh@example.com");
+    }
+
+    @Test
+    void changingPasswordCancelsPendingEmailProof() {
+        createUser();
+        userService.updateProfile("minh_test", emailUpdate("new@example.com"));
+        String pending = lastEmailToken();
+        ChangePasswordRequest request = new ChangePasswordRequest();
+        request.setCurrentPassword(PASSWORD);
+        request.setNewPassword(NEXT_PASSWORD);
+        request.setConfirmPassword(NEXT_PASSWORD);
+        userService.changePassword("minh_test", request);
+        assertThat(emailVerification.isValid(pending)).isFalse();
+        assertThat(users.findByUsername("minh_test").orElseThrow().getEmail()).isEqualTo("minh@example.com");
+    }
+
+    @Test
+    void failedEmailChangeDeliveryLeavesProfileAndOriginalEmailIntact() {
+        createUser();
+        mail.fail = true;
+        assertThatThrownBy(() -> userService.updateProfile("minh_test", emailUpdate("new@example.com")))
+                .isInstanceOf(EmailDeliveryException.class);
+        assertThat(userService.profile("minh_test").getPendingEmail()).isNull();
+        assertThat(users.findByUsername("minh_test").orElseThrow().getEmail()).isEqualTo("minh@example.com");
+    }
+
+    @Test
+    void emailConfirmationCanOnlySucceedOnceUnderConcurrentRequests() throws Exception {
+        userService.register(registration("minh_test", "minh@example.com"));
+        String raw = lastEmailToken();
+        var start = new java.util.concurrent.CountDownLatch(1);
+        var pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+        try {
+            java.util.concurrent.Callable<Boolean> confirm = () -> {
+                start.await();
+                try {
+                    emailVerification.confirm(raw);
+                    return true;
+                } catch (InvalidEmailVerificationException exception) {
+                    return false;
+                }
+            };
+            var first = pool.submit(confirm);
+            var second = pool.submit(confirm);
+            start.countDown();
+            assertThat(List.of(first.get(10, java.util.concurrent.TimeUnit.SECONDS),
+                    second.get(10, java.util.concurrent.TimeUnit.SECONDS)))
+                    .containsExactlyInAnyOrder(true, false);
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    @Test
+    void passwordFormsRenderMeterAndAllConditions() throws Exception {
+        createUser();
+        for (String url : List.of("/auth/register", "/user/change-password")) {
+            var request = get(url);
+            if (url.startsWith("/user/")) request.session(login());
+            mvc.perform(request).andExpect(status().isOk())
+                    .andExpect(content().string(org.hamcrest.Matchers.containsString("data-strength-progress")))
+                    .andExpect(content().string(org.hamcrest.Matchers.containsString("data-password-rule=\"bytes\"")));
+        }
+    }
+
+    @Test
+    void unverifiedAccountCannotRequestPasswordResetToBypassProof() {
+        userService.register(registration("minh_test", "minh@example.com"));
+        auth.requestPasswordReset("minh@example.com");
+        assertThat(mail.links).isEmpty();
+        assertThat(tokens.count()).isZero();
     }
 }

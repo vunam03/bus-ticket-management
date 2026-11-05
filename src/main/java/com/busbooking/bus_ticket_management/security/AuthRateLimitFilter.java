@@ -26,7 +26,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         String route = request.getRequestURI().substring(request.getContextPath().length());
         if ("POST".equals(request.getMethod())
                 && (route.startsWith("/auth/") || route.equals("/user/change-password"))) {
-            int limit = route.equals("/auth/forgot-password") ? 5 : 20;
+            int limit = (route.equals("/auth/forgot-password") || route.equals("/auth/resend-verification")) ? 5 : 20;
             if (!allow(request.getRemoteAddr() + ":" + route, limit)) {
                 response.setStatus(429);
                 response.setHeader("Retry-After", "60");

@@ -28,6 +28,21 @@
                 <div><strong th:text="${profile.fullName}"></strong><br><span class="text-secondary" th:text="'@' + ${profile.username}"></span></div>
                 <span class="role-badge" th:text="${profile.role == 'ADMIN' ? 'Quản trị viên' : 'Khách hàng'}"></span>
             </div>
+
+            <div class="email-status">
+                <span class="verified-badge" th:if="${profile.emailVerified}">Email đã xác thực</span>
+                <span class="text-warning" th:unless="${profile.emailVerified}">Email chưa xác thực</span>
+            </div>
+            <div class="alert alert-info" th:if="${profile.pendingEmail}">
+                <strong>Đang chờ xác nhận email mới:</strong>
+                <span th:text="${profile.pendingEmail}"></span>.
+                Địa chỉ hiện tại vẫn hoạt động. Link xác nhận có hạn 30 phút.
+                <form th:action="@{/user/email-change/cancel}" method="post" class="mt-2">
+                    <button class="btn-link" type="submit">Hủy yêu cầu đổi email</button>
+                </form>
+            </div>
+            <p class="input-hint">Khi sửa email, hệ thống gửi link đến địa chỉ mới.
+                Email hiện tại chỉ thay đổi sau khi bạn xác nhận.</p>
             <p class="input-hint">Tên đăng nhập và quyền tài khoản không thể thay đổi ở đây.</p>
             <form th:action="@{/user/profile}" th:object="${updateProfileRequest}" method="post" data-validate>
 

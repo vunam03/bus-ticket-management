@@ -34,4 +34,14 @@ class PasswordPolicyTests {
     void rejectsPasswordsExceedingCharacterLimit() {
         assertThat(validator.isValid("Aa1!" + "b".repeat(61), null)).isFalse();
     }
+    @ParameterizedTest
+    @ValueSource(strings = {"StrongPass1!\u00a0", "StrongPass1!\ufeff", "StrongPass1!\t"})
+    void rejectsUnicodeAndAsciiWhitespace(String password) {
+        assertThat(validator.isValid(password, null)).isFalse();
+    }
+
+    @Test
+    void supportsSupplementaryUnicodeUppercaseCharacters() {
+        assertThat(validator.isValid("\uD801\uDC00abc1!long", null)).isTrue();
+    }
 }

@@ -3,6 +3,10 @@ package com.busbooking.bus_ticket_management.model;
 
 /** Account-only events; excludes ticket, revenue and trip activity. */
 public enum SecurityEventType {
+    EMAIL_VERIFIED("Xác thực email đăng ký"),
+    EMAIL_CHANGE_REQUESTED("Yêu cầu đổi email"),
+    EMAIL_CHANGED("Xác nhận email mới"),
+    EMAIL_CHANGE_CANCELLED("Hủy yêu cầu đổi email"),
     REGISTERED("Đăng ký tài khoản"),
     LOGIN_SUCCESS("Đăng nhập thành công"),
     LOGIN_FAILED("Đăng nhập thất bại"),

@@ -23,7 +23,7 @@
 
             <span class="section-kicker">TÀI KHOẢN MỚI</span>
             <h2 id="page-heading">Đăng ký</h2>
-            <p class="text-secondary">Các mục có dấu * là bắt buộc.</p>
+            <p class="text-secondary">Các mục có dấu * là bắt buộc. Bạn cần xác thực email trước khi đăng nhập.</p>
             <form th:action="@{/auth/register}" th:object="${registerRequest}" method="post" data-validate>
 
                     <div class="field-group">
@@ -95,7 +95,7 @@
                         <div class="field-error" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></div>
                     </div>
                 <div th:replace="~{fragments/account :: passwordHint}"></div>
-                <div class="password-meter" data-password-meter aria-live="polite"></div>
+                <div th:replace="~{fragments/account :: passwordMeter}"></div>
 
                     <div class="field-group">
                         <label class="form-label" for="confirmPassword">Xác nhận mật khẩu *</label>

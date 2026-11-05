@@ -48,7 +48,7 @@ public class AuthService {
         }
         User user = users.findLockedById(found.get().getId()).orElseThrow();
         entityManager.refresh(user, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
-        if (!user.getEnabled()) {
+        if (!user.getEnabled() || !user.getEmailVerified()) {
             return;
         }
         tokens.invalidateForUser(user.getId());
@@ -74,7 +74,7 @@ public class AuthService {
         return tokens.findByTokenHash(digest(rawToken))
                 .filter(token -> !token.getUsed())
                 .filter(token -> token.getExpiresAt().isAfter(clock.instant()))
-                .filter(token -> token.getUser().getEnabled()).isPresent();
+                .filter(token -> token.getUser().getEnabled() && token.getUser().getEmailVerified()).isPresent();
     }
 
     public void resetPassword(ResetPasswordRequest request) {
@@ -88,7 +88,7 @@ public class AuthService {
         entityManager.refresh(user, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
         // Refresh after locking: another transaction may already have redeemed this token.
         entityManager.refresh(token, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
-        if (token.getUsed() || !token.getExpiresAt().isAfter(clock.instant()) || !user.getEnabled()) {
+        if (token.getUsed() || !token.getExpiresAt().isAfter(clock.instant()) || !user.getEnabled() || !user.getEmailVerified()) {
             throw invalidToken();
         }
         userService.replacePassword(user, request.getNewPassword());

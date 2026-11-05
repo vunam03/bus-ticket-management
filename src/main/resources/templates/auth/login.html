@@ -23,7 +23,11 @@
 
             <span class="section-kicker">CHÀO MỪNG TRỞ LẠI</span>
             <h2 id="page-heading">Đăng nhập</h2>
+
             <p class="text-secondary">Sử dụng tên đăng nhập đã đăng ký.</p>
+            <div class="alert alert-success" th:if="${param.emailVerified}">Đã xác thực email. Bạn có thể đăng nhập.</div>
+            <div class="alert alert-success" th:if="${param.emailChanged}">Đã xác nhận email mới. Vui lòng đăng nhập lại.</div>
+
             <div class="alert alert-danger" th:if="${param.error}" role="alert">Tên đăng nhập hoặc mật khẩu không đúng, hoặc tài khoản đã bị khóa.</div>
             <div class="alert alert-info" th:if="${param.logout}">Bạn đã đăng xuất.</div>
             <div class="alert alert-warning" th:if="${param.expired}">Phiên đăng nhập đã thay đổi. Vui lòng đăng nhập lại.</div>
@@ -59,6 +63,8 @@
                 <div class="form-links"><a th:href="@{/auth/forgot-password}">Quên mật khẩu?</a></div>
                 <button class="btn btn-primary w-100" type="submit">Đăng nhập</button>
             </form>
+
+            <p class="card-bottom"><a th:href="@{/auth/resend-verification}">Chưa xác thực email? Gửi lại hướng dẫn</a></p>
             <p class="card-bottom">Chưa có tài khoản? <a th:href="@{/auth/register}">Đăng ký ngay</a></p>
 
         </section>

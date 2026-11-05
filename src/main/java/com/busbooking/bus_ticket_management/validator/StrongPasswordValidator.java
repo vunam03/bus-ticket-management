@@ -16,8 +16,8 @@ public class StrongPasswordValidator implements ConstraintValidator<StrongPasswo
         boolean lower = false;
         boolean digit = false;
         boolean special = false;
-        for (char character : value.toCharArray()) {
-            if (Character.isWhitespace(character)) {
+        for (int character : value.codePoints().toArray()) {
+            if (Character.isWhitespace(character) || Character.isSpaceChar(character) || character == 0xFEFF) {
                 return false;
             }
             upper |= Character.isUpperCase(character);

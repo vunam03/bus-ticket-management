@@ -5,14 +5,14 @@ Nhánh: bui-le-minh
 
 ## Phạm vi
 
-- Đăng ký CUSTOMER; username/email không phân biệt hoa thường, kiểm tra trùng.
+- Đăng ký CUSTOMER; username/email không phân biệt hoa thường, kiểm tra trùng; xác thực email trước khi đăng nhập.
 - Đăng nhập Spring Security, lưu Authentication trong HTTP session; đăng xuất hủy session.
 - Phân quyền ADMIN cho /admin/**; hồ sơ cá nhân yêu cầu đăng nhập.
 - Xem và sửa họ tên, email, điện thoại, địa chỉ; xác nhận mật khẩu hiện tại.
 - Đổi mật khẩu, kiểm tra mật khẩu cũ, mật khẩu mạnh và xác nhận.
 - Quên/reset mật khẩu: token 256 bit, lưu SHA-256, hạn 15 phút, dùng một lần.
 - Đổi/reset mật khẩu thu hồi các phiên cũ ở lần truy cập tiếp theo.
-- Đổi email thu hồi link reset đã gửi đến email cũ.
+- Xác nhận email mới thành công mới thu hồi link reset đã gửi đến email cũ.
 - Khóa tài khoản hoặc đổi role khiến phiên cũ phải đăng nhập lại.
 - Bootstrap 5, responsive, tiếng Việt, hiện/ẩn mật khẩu và JavaScript validation.
 - CSRF, giới hạn tần suất gửi form theo IP, tạo ADMIN qua biến môi trường.
@@ -25,7 +25,9 @@ Nhánh: bui-le-minh
 4. Đặt Active profiles là local.
    Nếu không có ô này, thêm Program arguments: --spring.profiles.active=local.
 5. Run application.
-6. Mở http://localhost:8080/auth/register, tạo CUSTOMER rồi đăng nhập.
+6. Mở http://localhost:8080/auth/register và tạo CUSTOMER.
+7. Mở thư xác thực mới trong work/mail-outbox, mở link và bấm Xác nhận email.
+8. Quay lại đăng nhập.
 
 Profile local dùng H2 tại work/local-db/, không cần MySQL.
 Dữ liệu vẫn còn sau khi tắt app. Hộp thư demo ở work/mail-outbox/.
@@ -50,7 +52,7 @@ Không đăng ký CUSTOMER bằng username dự định dùng cho ADMIN trước
 
 ## Demo quên mật khẩu trên máy
 
-1. Run với profile local, đăng ký email hợp lệ.
+1. Run với profile local, đăng ký email hợp lệ và xác thực email trước.
 2. Mở /auth/forgot-password, nhập email vừa đăng ký.
 3. Mở thư mục work/mail-outbox trong IntelliJ hoặc File Explorer.
 4. Đọc file .txt mới nhất và mở đường dẫn reset trong đó.
@@ -251,3 +253,75 @@ Các tính năng dưới đây chỉ quản lý xác thực của chính chủ t
 
 Bảng mới không thay đổi schema nghiệp vụ của BusTrip, BusCompany, Seat, Ticket
 hoặc PaymentTransaction. index.html giữ nguyên bản gốc.
+
+
+## Xác thực email đăng ký và xác nhận thay đổi email
+
+### Đăng ký mới
+
+1. Nhập username, email của người dùng và mật khẩu trên /auth/register.
+2. Ứng dụng tạo CUSTOMER với emailVerified=false, enabled=true.
+3. Thư gửi đến đúng email vừa đăng ký, không gửi đến email cấu hình SMTP của ứng dụng.
+4. Ở profile local, mở file mới trong work/mail-outbox; khi dùng SMTP, kiểm tra hộp thư thật.
+5. Link có hiệu lực 24 giờ, chứa token 256 bit; database chỉ lưu digest SHA-256.
+6. Mở link chỉ xem trước; phải POST bằng nút Xác nhận email mới kích hoạt email.
+7. Sau xác nhận, đăng nhập bằng username và mật khẩu đã tạo.
+
+Tài khoản chưa xác thực không đăng nhập hoặc xin reset mật khẩu được.
+Trang đăng nhập có liên kết Gửi lại hướng dẫn.
+GET/POST /auth/resend-verification chỉ yêu cầu email đăng ký.
+Response luôn chung cho email không tồn tại, đã xác thực, bị khóa hoặc đang cooldown.
+Tối thiểu 60 giây giữa hai lần gửi; link mới thu hồi link cũ.
+Link hết hạn, dùng lại hoặc sai mã không kích hoạt được tài khoản.
+Nếu gửi thư đăng ký thất bại, transaction tài khoản/token rollback; có thể đăng ký lại.
+Khi chạy không có profile local, cần cấu hình SMTP để đăng ký mới hoạt động.
+
+### Đổi email an toàn
+
+1. Trong hồ sơ, nhập email mới và mật khẩu hiện tại rồi bấm Lưu.
+2. Email chính chưa đổi; một yêu cầu chờ xác nhận được hiển thị trên hồ sơ.
+3. Thư được gửi đến địa chỉ mới, hạn 30 phút.
+4. Mở link và bấm Xác nhận email.
+5. Sau thành công, email chính thay đổi, các phiên cũ bị thu hồi và phải đăng nhập lại.
+6. Link reset gửi đến email cũ cũng hết hiệu lực từ lúc xác nhận thành công.
+
+Trước lúc xác nhận, email cũ vẫn dùng được cho khôi phục mật khẩu.
+Nếu nhập nhầm địa chỉ, bấm Hủy yêu cầu đổi email trên hồ sơ.
+Khi yêu cầu hết hạn, nhập lại email mới và mật khẩu hiện tại để gửi link mới.
+Không nhận email mới, userId hoặc purpose từ form xác nhận; các thông tin đó lấy từ token.
+Ứng dụng kiểm tra lại unique email tại lúc xác nhận để xử lý hai tài khoản cùng xin một địa chỉ.
+Đổi/reset mật khẩu sẽ thu hồi yêu cầu xác nhận email còn chờ.
+GET không tiêu thụ link, tránh trình xem trước thư tự xác nhận.
+Mọi POST có CSRF; hai yêu cầu xác nhận đồng thời chỉ thành công một lần.
+
+### Tương thích tài khoản đã có
+
+Cột users.email_verified có SQL default true để dữ liệu trước bản cập nhật vẫn dùng được.
+Entity User mới mặc định false; luồng đăng ký luôn gán false.
+ADMIN khởi tạo qua cấu hình được đánh dấu xác thực rõ ràng.
+Không dùng enabled để lưu trạng thái xác thực email.
+Ứng dụng không tự gửi thư xác thực lại cho toàn bộ tài khoản cũ.
+
+## Thanh đánh giá mật khẩu
+
+- Có trên đăng ký, đổi mật khẩu và đặt lại mật khẩu.
+- Ba mức Yếu, Vừa, Mạnh với màu sắc và thanh tiến độ.
+- Checklist cho độ dài, chữ hoa/thường, số, ký tự đặc biệt, khoảng trắng và byte UTF-8.
+- Đánh giá tham khảo dựa trên điều kiện và độ dài; mẫu lặp hoặc từ thông dụng không được chấm mạnh.
+- Mật khẩu đủ điều kiện nhưng ngắn vẫn có thể bị chấm Yếu; độ mạnh không thay thế validation.
+- Toàn bộ đánh giá chạy trong trình duyệt, không gửi mật khẩu để chấm điểm.
+- Có thông tin hỗ trợ trình đọc màn hình và tôn trọng prefers-reduced-motion.
+
+Chạy test Java và test JavaScript:
+
+~~~powershell
+.\mvnw.cmd -B verify
+node --test src/test/js/password-strength.test.cjs
+~~~
+
+File bổ sung:
+- EmailVerificationToken, EmailTokenPurpose, EmailVerificationTokenRepository.
+- EmailVerificationService, EmailVerificationController.
+- EmailVerificationRequest, ConfirmEmailRequest.
+- auth/verify-email.html, auth/resend-verification.html.
+- static/js/password-strength.js.

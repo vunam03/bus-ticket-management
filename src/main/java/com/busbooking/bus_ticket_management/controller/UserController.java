@@ -43,11 +43,15 @@ public class UserController {
         if (!errors.hasErrors()) {
             try {
                 users.updateProfile(authentication.getName(), request);
-                redirect.addFlashAttribute("successMessage", "Đã cập nhật thông tin cá nhân.");
+                redirect.addFlashAttribute("successMessage", "Đã lưu thông tin. Nếu đổi email, vui lòng xác nhận thư gửi đến địa chỉ mới; email cũ vẫn được giữ đến khi xác nhận.");
                 return "redirect:/user/profile";
             } catch (UserAlreadyExistsException exception) {
                 errors.rejectValue(exception.getField(), "duplicate", exception.getMessage());
             } catch (InvalidCredentialsException exception) {
+                errors.rejectValue(exception.getField(), "invalid", exception.getMessage());
+            } catch (EmailDeliveryException exception) {
+                errors.rejectValue("email", "delivery", exception.getMessage());
+            } catch (AccountValidationException exception) {
                 errors.rejectValue(exception.getField(), "invalid", exception.getMessage());
             }
         }

@@ -2,20 +2,6 @@
 
 // Browser feedback improves usability; server-side validation remains authoritative.
 document.addEventListener("DOMContentLoaded", () => {
-    const utf8Length = value => new TextEncoder().encode(value).length;
-
-    function passwordProblems(value) {
-        const problems = [];
-        if (value.length < 8 || value.length > 64) problems.push("8–64 ký tự");
-        if (!/\p{Lu}/u.test(value)) problems.push("chữ hoa");
-        if (!/\p{Ll}/u.test(value)) problems.push("chữ thường");
-        if (!/\p{Nd}/u.test(value)) problems.push("chữ số");
-        if (!/[^\p{L}\p{N}\s]/u.test(value)) problems.push("ký tự đặc biệt");
-        if (/\s/u.test(value)) problems.push("không có khoảng trắng");
-        if (utf8Length(value) > 72) problems.push("tối đa 72 byte UTF-8");
-        return problems;
-    }
-
     document.querySelectorAll("[data-toggle-password]").forEach(button => {
         button.addEventListener("click", () => {
             const field = document.getElementById(button.dataset.togglePassword);
@@ -36,13 +22,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
         function validatePasswords() {
             strongFields.forEach(field => {
-                const problems = passwordProblems(field.value);
-                field.setCustomValidity(field.value && problems.length
-                    ? "Mật khẩu cần: " + problems.join(", ") + "." : "");
+                const result = window.AccountPasswordStrength.evaluate(field.value);
+                field.setCustomValidity(field.value && !result.valid
+                    ? "Mật khẩu cần: " + result.problems.join(", ") + "." : "");
                 if (meter) {
-                    meter.dataset.valid = String(field.value.length > 0 && problems.length === 0);
-                    meter.textContent = !field.value ? "" : problems.length
-                        ? "Cần thêm: " + problems.join(", ") : "Mật khẩu đáp ứng yêu cầu.";
+                    meter.dataset.valid = String(result.valid);
+                    meter.dataset.level = result.level;
+                    meter.querySelector("[data-strength-caption]").textContent = result.label;
+                    const progress = meter.querySelector("[data-strength-progress]");
+                    progress.setAttribute("aria-valuenow", String(result.percent));
+                    progress.setAttribute("aria-valuetext", result.label);
+                    meter.querySelector("[data-strength-fill]").style.width = result.percent + "%";
+                    result.rules.forEach(rule => {
+                        const item = meter.querySelector('[data-password-rule="' + rule.key + '"]');
+                        if (item) {
+                            item.dataset.met = String(rule.met);
+                            item.setAttribute("aria-label", (rule.met ? "Đạt: " : "Chưa đạt: ") + item.textContent);
+                        }
+                    });
                 }
             });
             matchFields.forEach(field => {

@@ -26,7 +26,7 @@ public class CredentialVersionFilter extends OncePerRequestFilter {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof AccountPrincipal principal) {
             boolean valid = users.findById(principal.getId())
-                    .filter(user -> user.getEnabled())
+                    .filter(user -> user.getEnabled() && user.getEmailVerified())
                     .filter(user -> user.getCredentialVersion() == principal.getCredentialVersion())
                     .filter(user -> Objects.equals(user.getUsername(), principal.getUsername()))
                     .filter(user -> principal.getAuthorities().stream().anyMatch(authority ->

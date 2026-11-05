@@ -45,12 +45,14 @@ public class AuthController {
         if (!errors.hasErrors()) {
             try {
                 users.register(request);
-                redirect.addFlashAttribute("successMessage", "Đăng ký thành công. Anh/chị có thể đăng nhập.");
+                redirect.addFlashAttribute("successMessage", "Đăng ký thành công. Vui lòng mở email xác thực và xác nhận trước khi đăng nhập.");
                 return "redirect:/auth/login";
             } catch (UserAlreadyExistsException exception) {
                 errors.rejectValue(exception.getField(), "duplicate", exception.getMessage());
             } catch (AccountValidationException exception) {
                 errors.rejectValue(exception.getField(), "invalid", exception.getMessage());
+            } catch (EmailDeliveryException exception) {
+                errors.rejectValue("email", "delivery", exception.getMessage());
             }
         }
         // Password inputs never echo their submitted values.

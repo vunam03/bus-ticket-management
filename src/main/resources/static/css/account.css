@@ -520,3 +520,85 @@ a:hover {
         width: 100%;
     }
 }
+
+
+.strength-caption {
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--muted);
+}
+.strength-track {
+    height: 7px;
+    overflow: hidden;
+    border-radius: 8px;
+    background: #e6eeee;
+}
+.strength-fill {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: #bb3542;
+    transition: width .2s ease;
+}
+.password-meter[data-level="weak"] .strength-caption {
+    color: #a12b38;
+}
+.password-meter[data-level="medium"] .strength-caption {
+    color: #815b09;
+}
+.password-meter[data-level="medium"] .strength-fill {
+    background: #c68d14;
+}
+.password-meter[data-level="strong"] .strength-caption {
+    color: var(--brand-dark);
+}
+.password-meter[data-level="strong"] .strength-fill {
+    background: var(--brand);
+}
+.password-checklist {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px 12px;
+    list-style: none;
+    padding: 0;
+    margin: 12px 0 8px;
+    color: var(--muted);
+}
+.password-checklist li::before {
+    content: "○";
+    display: inline-block;
+    width: 18px;
+}
+.password-checklist li[data-met="true"] {
+    color: var(--brand-dark);
+}
+.password-checklist li[data-met="true"]::before {
+    content: "✓";
+    font-weight: 800;
+}
+.strength-note {
+    margin-bottom: 18px;
+    font-size: 11px;
+    color: var(--muted);
+}
+.email-status {
+    margin: 4px 0 18px;
+}
+.verified-badge {
+    display: inline-block;
+    font-size: 12px;
+    border-radius: 20px;
+    padding: 6px 12px;
+    color: var(--brand-dark);
+    background: #e5f5ef;
+}
+@media (max-width: 400px) {
+    .password-checklist {
+        grid-template-columns: 1fr;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .strength-fill {
+        transition: none;
+    }
+}

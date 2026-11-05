@@ -14,13 +14,15 @@ public class AccountMaintenanceConfig {
     private final AccountSessionRepository sessions;
     private final LoginAttemptRepository attempts;
     private final Clock clock;
+    private final EmailVerificationTokenRepository emailTokens;
 
     public AccountMaintenanceConfig(SecurityEventRepository events, AccountSessionRepository sessions,
-                                    LoginAttemptRepository attempts, Clock clock) {
+                                    LoginAttemptRepository attempts, Clock clock, EmailVerificationTokenRepository emailTokens) {
         this.events = events;
         this.sessions = sessions;
         this.attempts = attempts;
         this.clock = clock;
+        this.emailTokens = emailTokens;
     }
 
     /** Retain account audit data for 90 days; expire old authentication metadata daily. */
@@ -30,6 +32,7 @@ public class AccountMaintenanceConfig {
         Instant yesterday = clock.instant().minus(Duration.ofDays(1));
         events.deleteByOccurredAtBefore(clock.instant().minus(Duration.ofDays(90)));
         sessions.deleteByExpiresAtBefore(yesterday);
+        emailTokens.deleteByExpiresAtBefore(yesterday);
         attempts.deleteByWindowEndsAtBeforeAndLockedUntilIsNull(yesterday);
         attempts.deleteByLockedUntilBefore(yesterday);
     }
