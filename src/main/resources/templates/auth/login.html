@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/account :: head('Đăng nhập')}"></head>
+<body>
+<nav th:replace="~{fragments/account :: nav}"></nav>
+<main class="container account-main">
+    <div class="account-layout ">
+        <aside class="account-story">
+            <span class="eyebrow">HÀNH TRÌNH CỦA BẠN</span>
+            <h1>Chuyến đi tốt đẹp bắt đầu từ đây.</h1>
+            <p>Đăng nhập để quản lý tài khoản và sẵn sàng cho hành trình tiếp theo.</p>
+            <div class="journey-line" aria-hidden="true">
+                <span>Hà Nội</span><span class="journey-track"></span><span>Hải Phòng</span>
+            </div>
+            <ul class="story-points">
+                <li>Thông tin tài khoản được quản lý tập trung</li>
+                <li>Truy cập theo đúng quyền của bạn</li>
+                <li>Chủ động cập nhật và bảo vệ tài khoản</li>
+            </ul>
+        </aside>
+        <section class="account-card" aria-labelledby="page-heading">
+            <div th:replace="~{fragments/account :: messages}"></div>
+
+            <span class="section-kicker">CHÀO MỪNG TRỞ LẠI</span>
+            <h2 id="page-heading">Đăng nhập</h2>
+            <p class="text-secondary">Sử dụng tên đăng nhập đã đăng ký.</p>
+            <div class="alert alert-danger" th:if="${param.error}" role="alert">Tên đăng nhập hoặc mật khẩu không đúng, hoặc tài khoản đã bị khóa.</div>
+            <div class="alert alert-info" th:if="${param.logout}">Bạn đã đăng xuất.</div>
+            <div class="alert alert-warning" th:if="${param.expired}">Phiên đăng nhập đã thay đổi. Vui lòng đăng nhập lại.</div>
+            <div class="alert alert-success" th:if="${param.passwordChanged}">Đã đổi mật khẩu. Vui lòng đăng nhập lại.</div>
+            <form th:action="@{/auth/login}" th:object="${loginRequest}" method="post" data-validate>
+
+                    <div class="field-group">
+                        <label class="form-label" for="username">Tên đăng nhập</label>
+                        <div>
+                            <input class="form-control" type="text" id="username" th:field="*{username}"
+                                   th:classappend="${#fields.hasErrors('username')} ? 'is-invalid'"
+                                   required maxlength="30" autocomplete="username" autofocus>
+
+                        </div>
+                        <div class="field-error" th:if="${#fields.hasErrors('username')}" th:errors="*{username}"></div>
+                    </div>
+
+                    <div class="field-group">
+                        <label class="form-label" for="password">Mật khẩu</label>
+                        <div class="password-input">
+                            <input class="form-control" type="password" id="password" name="password"
+                                   th:classappend="${#fields.hasErrors('password')} ? 'is-invalid'"
+                                   required maxlength="64" autocomplete="current-password">
+                            <button type="button" class="password-toggle" data-toggle-password="password" aria-label="Hiện mật khẩu" aria-pressed="false">Hiện</button>
+                        </div>
+                        <div class="field-error" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></div>
+                    </div>
+                <div class="form-links"><a th:href="@{/auth/forgot-password}">Quên mật khẩu?</a></div>
+                <button class="btn btn-primary w-100" type="submit">Đăng nhập</button>
+            </form>
+            <p class="card-bottom">Chưa có tài khoản? <a th:href="@{/auth/register}">Đăng ký ngay</a></p>
+
+        </section>
+    </div>
+</main>
+<footer th:replace="~{fragments/account :: footer}"></footer>
+</body>
+</html>
