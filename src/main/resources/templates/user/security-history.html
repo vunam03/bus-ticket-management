@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/account :: head('Lịch sử bảo mật')}"></head>
+<body>
+<nav th:replace="~{fragments/account :: nav}"></nav>
+<main class="container security-main">
+    <div class="security-heading">
+        <div><span class="eyebrow">BẢO VỆ TÀI KHOẢN</span><h1>Lịch sử bảo mật</h1></div>
+        <a th:href="@{/user/profile}">Về hồ sơ</a>
+    </div>
+    <nav class="security-tabs" aria-label="Cài đặt tài khoản">
+        <a th:href="@{/user/security/history}">Lịch sử bảo mật</a>
+        <a th:href="@{/user/security/sessions}">Phiên đăng nhập</a>
+        <a th:href="@{/user/change-password}">Đổi mật khẩu</a>
+    </nav>
+    <section class="security-card">
+        <div th:replace="~{fragments/account :: messages}"></div>
+
+        <p class="text-secondary">Các hoạt động xác thực của riêng bạn trong 90 ngày gần nhất.
+            Thời gian hiển thị theo giờ Việt Nam (UTC+7).</p>
+        <form class="history-filter" method="get" th:action="@{/user/security/history}">
+            <label for="event-type">Loại hoạt động</label>
+            <select class="form-select" name="type" id="event-type">
+                <option value="">Tất cả hoạt động</option>
+                <option th:each="eventType : ${eventTypes}" th:value="${eventType.name()}"
+                        th:text="${eventType.label}" th:selected="${selectedType == eventType.name()}"></option>
+            </select>
+            <button class="btn btn-primary" type="submit">Lọc lịch sử</button>
+        </form>
+        <div class="security-empty" th:if="${history.empty}">
+            <h2>Chưa có hoạt động phù hợp</h2>
+            <p>Hãy chọn loại hoạt động khác hoặc quay lại sau.</p>
+        </div>
+        <div class="table-responsive" th:unless="${history.empty}">
+            <table class="table security-table">
+                <caption>Nhật ký bảo mật cá nhân · Không lưu mật khẩu hoặc mã đăng nhập</caption>
+                <thead><tr><th scope="col">Thời gian</th><th scope="col">Hoạt động</th>
+                    <th scope="col">Địa chỉ IP</th><th scope="col">Trình duyệt / thiết bị</th></tr></thead>
+                <tbody>
+                    <tr th:each="event : ${history.content}">
+                        <td class="time-cell" th:text="${event.occurredAt}"></td>
+                        <td th:text="${event.action}"></td>
+                        <td th:text="${#strings.isEmpty(event.ipAddress) ? 'Không ghi nhận' : event.ipAddress}"></td>
+                        <td class="device-cell" th:text="${#strings.isEmpty(event.device) ? 'Không ghi nhận' : event.device}"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <nav class="history-pagination" aria-label="Phân trang lịch sử" th:if="${history.totalPages > 0}">
+            <a class="btn btn-outline-secondary" th:if="${history.hasPrevious()}"
+               th:href="@{/user/security/history(page=${history.number - 1},type=${selectedType})}">Trang trước</a>
+            <span th:text="'Trang ' + ${history.number + 1} + ' / ' + ${history.totalPages}"></span>
+            <a class="btn btn-outline-secondary" th:if="${history.hasNext()}"
+               th:href="@{/user/security/history(page=${history.number + 1},type=${selectedType})}">Trang sau</a>
+        </nav>
+
+    </section>
+</main>
+<footer th:replace="~{fragments/account :: footer}"></footer>
+</body>
+</html>

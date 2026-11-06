@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/account :: head('Hồ sơ cá nhân')}"></head>
+<body>
+<nav th:replace="~{fragments/account :: nav}"></nav>
+<main class="container account-main">
+    <div class="account-layout account-layout-wide">
+        <aside class="account-story">
+            <span class="eyebrow">HÀNH TRÌNH CỦA BẠN</span>
+            <h1>Tài khoản của bạn, thông tin của bạn.</h1>
+            <p>Xem hồ sơ, cập nhật liên hệ và quản lý mật khẩu tại đây.</p>
+            <div class="journey-line" aria-hidden="true">
+                <span>Hà Nội</span><span class="journey-track"></span><span>Hải Phòng</span>
+            </div>
+            <ul class="story-points">
+                <li>Thông tin tài khoản được quản lý tập trung</li>
+                <li>Truy cập theo đúng quyền của bạn</li>
+                <li>Chủ động cập nhật và bảo vệ tài khoản</li>
+            </ul>
+        </aside>
+        <section class="account-card" aria-labelledby="page-heading">
+            <div th:replace="~{fragments/account :: messages}"></div>
+
+            <span class="section-kicker">TÀI KHOẢN</span>
+            <h2 id="page-heading">Hồ sơ cá nhân</h2>
+            <div class="profile-summary">
+                <span class="avatar" aria-hidden="true" th:text="${#strings.substring(profile.fullName,0,1)}">B</span>
+                <div><strong th:text="${profile.fullName}"></strong><br><span class="text-secondary" th:text="'@' + ${profile.username}"></span></div>
+                <span class="role-badge" th:text="${profile.role == 'ADMIN' ? 'Quản trị viên' : 'Khách hàng'}"></span>
+            </div>
+
+            <div class="email-status">
+                <span class="verified-badge" th:if="${profile.emailVerified}">Email đã xác thực</span>
+                <span class="text-warning" th:unless="${profile.emailVerified}">Email chưa xác thực</span>
+            </div>
+            <div class="alert alert-info" th:if="${profile.pendingEmail}">
+                <strong>Đang chờ xác nhận email mới:</strong>
+                <span th:text="${profile.pendingEmail}"></span>.
+                Địa chỉ hiện tại vẫn hoạt động. Link xác nhận có hạn 30 phút.
+                <form th:action="@{/user/email-change/cancel}" method="post" class="mt-2">
+                    <button class="btn-link" type="submit">Hủy yêu cầu đổi email</button>
+                </form>
+            </div>
+            <p class="input-hint">Khi sửa email, hệ thống gửi link đến địa chỉ mới.
+                Email hiện tại chỉ thay đổi sau khi bạn xác nhận.</p>
+            <p class="input-hint">Tên đăng nhập và quyền tài khoản không thể thay đổi ở đây.</p>
+            <form th:action="@{/user/profile}" th:object="${updateProfileRequest}" method="post" data-validate>
+
+                    <div class="field-group">
+                        <label class="form-label" for="fullName">Họ và tên *</label>
+                        <div>
+                            <input class="form-control" type="text" id="fullName" th:field="*{fullName}"
+                                   th:classappend="${#fields.hasErrors('fullName')} ? 'is-invalid'"
+                                   required maxlength="100" autocomplete="name">
+
+                        </div>
+                        <div class="field-error" th:if="${#fields.hasErrors('fullName')}" th:errors="*{fullName}"></div>
+                    </div>
+
+                    <div class="field-group">
+                        <label class="form-label" for="email">Email *</label>
+                        <div>
+                            <input class="form-control" type="email" id="email" th:field="*{email}"
+                                   th:classappend="${#fields.hasErrors('email')} ? 'is-invalid'"
+                                   required maxlength="254" autocomplete="email">
+
+                        </div>
+                        <div class="field-error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></div>
+                    </div>
+
+                    <div class="field-group">
+                        <label class="form-label" for="phone">Số điện thoại</label>
+                        <div>
+                            <input class="form-control" type="tel" id="phone" th:field="*{phone}"
+                                   th:classappend="${#fields.hasErrors('phone')} ? 'is-invalid'"
+                                   pattern="[+]?[0-9]{9,15}" maxlength="16" autocomplete="tel">
+
+                        </div>
+                        <div class="field-error" th:if="${#fields.hasErrors('phone')}" th:errors="*{phone}"></div>
+                    </div>
+
+                    <div class="field-group">
+                        <label class="form-label" for="address">Địa chỉ</label>
+                        <div>
+                            <input class="form-control" type="text" id="address" th:field="*{address}"
+                                   th:classappend="${#fields.hasErrors('address')} ? 'is-invalid'"
+                                   maxlength="255" autocomplete="street-address">
+
+                        </div>
+                        <div class="field-error" th:if="${#fields.hasErrors('address')}" th:errors="*{address}"></div>
+                    </div>
+
+                    <div class="field-group">
+                        <label class="form-label" for="currentPassword">Xác nhận bằng mật khẩu hiện tại *</label>
+                        <div class="password-input">
+                            <input class="form-control" type="password" id="currentPassword" name="currentPassword"
+                                   th:classappend="${#fields.hasErrors('currentPassword')} ? 'is-invalid'"
+                                   required maxlength="64" autocomplete="current-password">
+                            <button type="button" class="password-toggle" data-toggle-password="currentPassword" aria-label="Hiện mật khẩu" aria-pressed="false">Hiện</button>
+                        </div>
+                        <div class="field-error" th:if="${#fields.hasErrors('currentPassword')}" th:errors="*{currentPassword}"></div>
+                    </div>
+                <button class="btn btn-primary w-100" type="submit">Lưu thông tin</button>
+            </form>
+            <div class="profile-actions">
+                <a th:href="@{/user/security/history}">Lịch sử bảo mật</a>
+                <a th:href="@{/user/security/sessions}">Phiên đăng nhập</a>
+                <a th:href="@{/user/change-password}">Đổi mật khẩu</a>
+                <a th:if="${profile.role == 'ADMIN'}" th:href="@{/admin/account}">Khu vực quản trị</a>
+                <form th:action="@{/auth/logout}" method="post"><button class="btn-link" type="submit">Đăng xuất</button></form>
+            </div>
+
+        </section>
+    </div>
+</main>
+<footer th:replace="~{fragments/account :: footer}"></footer>
+</body>
+</html>

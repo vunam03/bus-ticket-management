@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/account :: head('Đăng ký')}"></head>
+<body>
+<nav th:replace="~{fragments/account :: nav}"></nav>
+<main class="container account-main">
+    <div class="account-layout account-layout-wide">
+        <aside class="account-story">
+            <span class="eyebrow">HÀNH TRÌNH CỦA BẠN</span>
+            <h1>Tạo tài khoản cho những hành trình mới.</h1>
+            <p>Thông tin của bạn giúp việc quản lý tài khoản thuận tiện hơn.</p>
+            <div class="journey-line" aria-hidden="true">
+                <span>Hà Nội</span><span class="journey-track"></span><span>Hải Phòng</span>
+            </div>
+            <ul class="story-points">
+                <li>Thông tin tài khoản được quản lý tập trung</li>
+                <li>Truy cập theo đúng quyền của bạn</li>
+                <li>Chủ động cập nhật và bảo vệ tài khoản</li>
+            </ul>
+        </aside>
+        <section class="account-card" aria-labelledby="page-heading">
+            <div th:replace="~{fragments/account :: messages}"></div>
+
+            <span class="section-kicker">TÀI KHOẢN MỚI</span>
+            <h2 id="page-heading">Đăng ký</h2>
+            <p class="text-secondary">Các mục có dấu * là bắt buộc. Bạn cần xác thực email trước khi đăng nhập.</p>
+            <form th:action="@{/auth/register}" th:object="${registerRequest}" method="post" data-validate>
+
+                    <div class="field-group">
+                        <label class="form-label" for="username">Tên đăng nhập *</label>
+                        <div>
+                            <input class="form-control" type="text" id="username" th:field="*{username}"
+                                   th:classappend="${#fields.hasErrors('username')} ? 'is-invalid'"
+                                   required pattern="[a-zA-Z0-9_]{4,30}" minlength="4" maxlength="30" autocomplete="username" aria-describedby="username-hint">
+
+                        </div>
+                        <div class="field-error" th:if="${#fields.hasErrors('username')}" th:errors="*{username}"></div>
+                    </div>
+                <p class="input-hint" id="username-hint">4–30 chữ cái, số hoặc dấu gạch dưới. Không phân biệt hoa/thường.</p>
+
+                    <div class="field-group">
+                        <label class="form-label" for="fullName">Họ và tên *</label>
+                        <div>
+                            <input class="form-control" type="text" id="fullName" th:field="*{fullName}"
+                                   th:classappend="${#fields.hasErrors('fullName')} ? 'is-invalid'"
+                                   required maxlength="100" autocomplete="name">
+
+                        </div>
+                        <div class="field-error" th:if="${#fields.hasErrors('fullName')}" th:errors="*{fullName}"></div>
+                    </div>
+
+                    <div class="field-group">
+                        <label class="form-label" for="email">Email *</label>
+                        <div>
+                            <input class="form-control" type="email" id="email" th:field="*{email}"
+                                   th:classappend="${#fields.hasErrors('email')} ? 'is-invalid'"
+                                   required maxlength="254" autocomplete="email">
+
+                        </div>
+                        <div class="field-error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></div>
+                    </div>
+                <div class="field-row">
+
+                    <div class="field-group">
+                        <label class="form-label" for="phone">Số điện thoại</label>
+                        <div>
+                            <input class="form-control" type="tel" id="phone" th:field="*{phone}"
+                                   th:classappend="${#fields.hasErrors('phone')} ? 'is-invalid'"
+                                   pattern="[+]?[0-9]{9,15}" maxlength="16" autocomplete="tel">
+
+                        </div>
+                        <div class="field-error" th:if="${#fields.hasErrors('phone')}" th:errors="*{phone}"></div>
+                    </div>
+
+                    <div class="field-group">
+                        <label class="form-label" for="address">Địa chỉ</label>
+                        <div>
+                            <input class="form-control" type="text" id="address" th:field="*{address}"
+                                   th:classappend="${#fields.hasErrors('address')} ? 'is-invalid'"
+                                   maxlength="255" autocomplete="street-address">
+
+                        </div>
+                        <div class="field-error" th:if="${#fields.hasErrors('address')}" th:errors="*{address}"></div>
+                    </div>
+                </div>
+
+                    <div class="field-group">
+                        <label class="form-label" for="password">Mật khẩu *</label>
+                        <div class="password-input">
+                            <input class="form-control" type="password" id="password" name="password"
+                                   th:classappend="${#fields.hasErrors('password')} ? 'is-invalid'"
+                                   required minlength="8" maxlength="64" autocomplete="new-password" data-strong-password aria-describedby="password-hint">
+                            <button type="button" class="password-toggle" data-toggle-password="password" aria-label="Hiện mật khẩu" aria-pressed="false">Hiện</button>
+                        </div>
+                        <div class="field-error" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></div>
+                    </div>
+                <div th:replace="~{fragments/account :: passwordHint}"></div>
+                <div th:replace="~{fragments/account :: passwordMeter}"></div>
+
+                    <div class="field-group">
+                        <label class="form-label" for="confirmPassword">Xác nhận mật khẩu *</label>
+                        <div class="password-input">
+                            <input class="form-control" type="password" id="confirmPassword" name="confirmPassword"
+                                   th:classappend="${#fields.hasErrors('confirmPassword')} ? 'is-invalid'"
+                                   required maxlength="64" autocomplete="new-password" data-match="password">
+                            <button type="button" class="password-toggle" data-toggle-password="confirmPassword" aria-label="Hiện mật khẩu" aria-pressed="false">Hiện</button>
+                        </div>
+                        <div class="field-error" th:if="${#fields.hasErrors('confirmPassword')}" th:errors="*{confirmPassword}"></div>
+                    </div>
+                <button class="btn btn-primary w-100" type="submit">Tạo tài khoản</button>
+            </form>
+            <p class="card-bottom">Đã có tài khoản? <a th:href="@{/auth/login}">Đăng nhập</a></p>
+
+        </section>
+    </div>
+</main>
+<footer th:replace="~{fragments/account :: footer}"></footer>
+</body>
+</html>

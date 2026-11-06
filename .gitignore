@@ -31,3 +31,9 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Local demo database, reset emails and temporary reports
+work/
+work-*.log
+.env
+*.class
