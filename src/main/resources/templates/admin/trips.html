@@ -1,10 +1,62 @@
 <!DOCTYPE html>
-<html lang="en">
+<html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>Quản lý Chuyến Xe</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
 </head>
-<body>
+<body class="bg-light">
+<div class="container my-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Danh Sách Chuyến Xe</h2>
+        <div>
+            <a th:href="@{/admin/bus-companies}" class="btn btn-outline-secondary me-2">&larr; Quản lý Nhà xe</a>
+            <a th:href="@{/admin/trips/add}" class="btn btn-primary">+ Thêm Chuyến Xe Mới</a>
+        </div>
+    </div>
 
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <table class="table table-hover align-middle">
+                <thead class="table-dark">
+                <tr>
+                    <th>Mã chuyến</th>
+                    <th>Tuyến đường</th>
+                    <th>Nhà xe</th>
+                    <th>Nơi đi</th>
+                    <th>Nơi đến</th>
+                    <th>Thời gian xuất bến</th>
+                    <th>Giá vé (VNĐ)</th>
+                    <th>Số ghế</th>
+                    <th>Loại xe</th>
+                    <th class="text-center">Thao tác</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="t : ${trips}">
+                    <td th:text="${t.id}">1</td>
+                    <td class="fw-bold" th:text="${t.routeName}">Hà Nội - Hải Phòng</td>
+                    <td th:text="${t.companyName}">Hải Âu</td>
+                    <td th:text="${t.departureLocation}">Bến xe Gia Lâm</td>
+                    <td th:text="${t.arrivalLocation}">Bến xe Niệm Nghĩa</td>
+                    <td th:text="${#temporals.format(t.departureTime, 'dd/MM/yyyy HH:mm')}">01/01/2026 08:00</td>
+                    <td th:text="${#numbers.formatDecimal(t.ticketPrice, 0, 'COMMA', 0, 'POINT')}">120,000</td>
+                    <td th:text="${t.totalSeats}">40</td>
+                    <td th:text="${t.busType}">Giường nằm</td>
+                    <td class="text-center">
+                        <a th:href="@{/admin/trips/edit/{id}(id=${t.id})}" class="btn btn-sm btn-warning me-1">Sửa</a>
+                        <a th:href="@{/admin/trips/delete/{id}(id=${t.id})}"
+                           class="btn btn-sm btn-danger"
+                           onclick="return confirm('Bạn có muốn xóa chuyến xe này không?')">Xóa</a>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(trips)}">
+                    <td colspan="10" class="text-center text-muted">Chưa có chuyến xe nào được đăng tạo.</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 </body>
 </html>

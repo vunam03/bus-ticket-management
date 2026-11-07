@@ -6,7 +6,6 @@ import java.util.List;
 
 @Entity
 @Table(name = "bus_companies")
-
 public class BusCompany {
 
     @Id
@@ -23,69 +22,43 @@ public class BusCompany {
     private String address;
 
     @Column(name = "rating")
-    private double rating;
+    private Double rating;
 
-    @OneToMany(mappedBy = "busCompany", cascade = CascadeType.ALL,orphanRemoval = true)
+    @OneToMany(mappedBy = "busCompany", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<BusTrip> busTrips = new ArrayList<>();
 
-    public BusCompany() {
-    }
+    public BusCompany() {}
 
-    public BusCompany(Long id, String name, String phoneNumber, String address,
-                      double rating, List<BusTrip> busTrips) {
+    public BusCompany(Long id, String name, String phoneNumber, String address, Double rating) {
         this.id = id;
         this.name = name;
         this.phoneNumber = phoneNumber;
         this.address = address;
         this.rating = rating;
-        this.busTrips = busTrips;
     }
 
     public Long getId() {
-        return id;
-    }
-
+        return id; }
     public void setId(Long id) {
-        this.id = id;
-    }
-
+        this.id = id; }
     public String getName() {
-        return name;
-    }
-
+        return name; }
     public void setName(String name) {
-        this.name = name;
-    }
-
+        this.name = name; }
     public String getPhoneNumber() {
-        return phoneNumber;
-    }
-
+        return phoneNumber; }
     public void setPhoneNumber(String phoneNumber) {
-        this.phoneNumber = phoneNumber;
-    }
-
+        this.phoneNumber = phoneNumber; }
     public String getAddress() {
-        return address;
-    }
-
+        return address; }
     public void setAddress(String address) {
-        this.address = address;
-    }
-
-    public double getRating() {
-        return rating;
-    }
-
-    public void setRating(double rating) {
-        this.rating = rating;
-    }
-
+        this.address = address; }
+    public Double getRating() {
+        return rating; }
+    public void setRating(Double rating) {
+        this.rating = rating; }
     public List<BusTrip> getBusTrips() {
-        return busTrips;
-    }
-
+        return busTrips; }
     public void setBusTrips(List<BusTrip> busTrips) {
-        this.busTrips = busTrips;
-    }
+        this.busTrips = busTrips; }
 }

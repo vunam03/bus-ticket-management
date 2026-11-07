@@ -1,4 +1,9 @@
 package com.busbooking.bus_ticket_management.repository;
 
-public class BusCompanyRepository {
+import com.busbooking.bus_ticket_management.model.BusCompany;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface BusCompanyRepository extends JpaRepository<BusCompany, Long> {
 }

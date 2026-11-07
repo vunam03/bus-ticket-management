@@ -1,10 +1,64 @@
 <!DOCTYPE html>
-<html lang="en">
+<html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>Thêm Chuyến Xe</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
 </head>
-<body>
-
+<body class="bg-light">
+<div class="container my-5" style="max-width: 700px;">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">Tạo Chuyến Xe Mới</h4>
+        </div>
+        <div class="card-body p-4">
+            <form th:action="@{/admin/trips/add}" th:object="${tripRequest}" method="post">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Chọn nhà xe</label>
+                    <select th:field="*{companyId}" class="form-select" required>
+                        <option value="">-- Chọn Nhà Xe --</option>
+                        <option th:each="c : ${companies}" th:value="${c.id}" th:text="${c.name}"></option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Tên tuyến đường</label>
+                    <input type="text" th:field="*{routeName}" class="form-control" placeholder="Ví dụ: Hà Nội - Đà Nẵng" required>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Nơi khởi hành (Nơi đi)</label>
+                        <input type="text" th:field="*{departureLocation}" class="form-control" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Nơi đến</label>
+                        <input type="text" th:field="*{arrivalLocation}" class="form-control" required>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Thời gian xuất bến</label>
+                    <input type="datetime-local" th:field="*{departureTime}" class="form-control" required>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">Giá vé (VNĐ)</label>
+                        <input type="number" th:field="*{ticketPrice}" class="form-control" step="1000" min="0" required>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">Tổng số ghế</label>
+                        <input type="number" th:field="*{totalSeats}" class="form-control" min="1" required>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">Loại xe</label>
+                        <input type="text" th:field="*{busType}" class="form-control" placeholder="Limousine / Giường nằm">
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between mt-4">
+                    <a th:href="@{/admin/trips}" class="btn btn-secondary">Hủy bỏ</a>
+                    <button type="submit" class="btn btn-success px-4">Tạo Chuyến Xe</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 </body>
 </html>

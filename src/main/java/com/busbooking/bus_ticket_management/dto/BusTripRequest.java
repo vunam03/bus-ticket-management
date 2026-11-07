@@ -1,14 +1,11 @@
 package com.busbooking.bus_ticket_management.dto;
 
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.Future;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-
 public class BusTripRequest {
+
     @NotBlank(message = "Tên tuyến đường không được để trống")
     private String routeName;
 
@@ -16,14 +13,14 @@ public class BusTripRequest {
     private String departureLocation;
 
     @NotBlank(message = "Điểm đến không được để trống")
-    private String arivalLocation;
+    private String arrivalLocation;
 
-    @NotNull(message = "Thời gian xuất bến không dược để trống")
-    @Future(message = "Thời gian xuất bến phải là thời gian tương lai")
+    @NotNull(message = "Thời gian xuất bến không được để trống")
+    @Future(message = "Thời gian xuất bến phải là thời gian trong tương lai")
     private LocalDateTime departureTime;
 
     @NotNull(message = "Giá vé không được để trống")
-    @DecimalMin(value = "0.0", inclusive = false, message = "Giá vé phải lớn hơn không")
+    @DecimalMin(value = "0.0", inclusive = false, message = "Giá vé phải lớn hơn 0")
     private BigDecimal ticketPrice;
 
     @NotNull(message = "Tổng số ghế không được để trống")
@@ -34,86 +31,38 @@ public class BusTripRequest {
     @NotNull(message = "ID nhà xe không được để trống")
     private Long companyId;
 
-    public BusTripRequest() {
-    }
-
-    public BusTripRequest(String routeName, String departureLocation,
-                          String arivalLocation, LocalDateTime departureTime,
-                          BigDecimal ticketPrice, Integer totalSeats, String busType,
-                          Long companyId) {
-        this.routeName = routeName;
-        this.departureLocation = departureLocation;
-        this.arivalLocation = arivalLocation;
-        this.departureTime = departureTime;
-        this.ticketPrice = ticketPrice;
-        this.totalSeats = totalSeats;
-        this.busType = busType;
-        this.companyId = companyId;
-    }
+    public BusTripRequest() {}
 
     public String getRouteName() {
-        return routeName;
-    }
-
+        return routeName; }
     public void setRouteName(String routeName) {
-        this.routeName = routeName;
-    }
-
+        this.routeName = routeName; }
     public String getDepartureLocation() {
-        return departureLocation;
-    }
-
+        return departureLocation; }
     public void setDepartureLocation(String departureLocation) {
-        this.departureLocation = departureLocation;
-    }
-
-    public String getArivalLocation() {
-        return arivalLocation;
-    }
-
-    public void setArivalLocation(String arivalLocation) {
-        this.arivalLocation = arivalLocation;
-    }
-
+        this.departureLocation = departureLocation; }
+    public String getArrivalLocation() {
+        return arrivalLocation; }
+    public void setArrivalLocation(String arrivalLocation) {
+        this.arrivalLocation = arrivalLocation; }
     public LocalDateTime getDepartureTime() {
-        return departureTime;
-    }
-
+        return departureTime; }
     public void setDepartureTime(LocalDateTime departureTime) {
-        this.departureTime = departureTime;
-    }
-
+        this.departureTime = departureTime; }
     public BigDecimal getTicketPrice() {
-        return ticketPrice;
-    }
-
+        return ticketPrice; }
     public void setTicketPrice(BigDecimal ticketPrice) {
-        this.ticketPrice = ticketPrice;
-    }
-
+        this.ticketPrice = ticketPrice; }
     public Integer getTotalSeats() {
-        return totalSeats;
-    }
-
+        return totalSeats; }
     public void setTotalSeats(Integer totalSeats) {
-        this.totalSeats = totalSeats;
-    }
-
+        this.totalSeats = totalSeats; }
     public String getBusType() {
-        return busType;
-    }
-
+        return busType; }
     public void setBusType(String busType) {
-        this.busType = busType;
-    }
-
+        this.busType = busType; }
     public Long getCompanyId() {
-        return companyId;
-    }
-
+        return companyId; }
     public void setCompanyId(Long companyId) {
-        this.companyId = companyId;
-    }
-
-
+        this.companyId = companyId; }
 }
