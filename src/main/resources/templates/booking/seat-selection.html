@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chọn ghế - Đặt vé xe khách</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --seat-available: #198754;
+            --seat-available-bg: #d1e7dd;
+            --seat-selected: #ffc107;
+            --seat-selected-bg: #fff3cd;
+            --seat-booked: #dc3545;
+            --seat-booked-bg: #f8d7da;
+            --seat-border: rgba(0,0,0,0.12);
+        }
+        body { background: #f6f8fb; }
+        .page-header { background: linear-gradient(135deg, #0d6efd, #0b5ed7); color: #fff; border-radius: 1rem; }
+        .floor-card { border: 0; border-radius: 1rem; box-shadow: 0 8px 24px rgba(16,24,40,0.06); }
+        .bus-frame { background: #fff; border: 2px solid #e9ecef; border-radius: 1.25rem; padding: 1rem; position: relative; }
+        .bus-front { width: 70%; margin: 0 auto .75rem; padding: .35rem .75rem; text-align: center; background: #e9f2ff; color: #084298; border-radius: 999px; font-weight: 600; font-size: .9rem; }
+        .seat-grid { display: grid; grid-template-columns: repeat(3, minmax(64px, 1fr)); gap: .6rem; align-items: stretch; }
+        .seat-btn, .seat-swatch { border-radius: .75rem; border: 2px solid var(--seat-border); font-weight: 700; transition: transform .08s ease, box-shadow .12s ease, opacity .12s ease; }
+        .seat-btn { min-height: 58px; width: 100%; padding: .35rem .25rem; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; background: var(--seat-available-bg); color: #0f5132; }
+        .seat-btn .seat-number { font-size: .95rem; }
+        .seat-btn .seat-price { font-size: .72rem; font-weight: 600; opacity: .9; }
+        .seat-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(16,24,40,0.08); }
+        .seat-btn:disabled { cursor: not-allowed; opacity: .92; }
+        .seat-available { background: var(--seat-available-bg) !important; color: #0f5132 !important; border-color: rgba(25,135,84,.35) !important; }
+        .seat-selected { background: var(--seat-selected-bg) !important; color: #664d03 !important; border-color: rgba(255,193,7,.65) !important; }
+        .seat-booked { background: var(--seat-booked-bg) !important; color: #842029 !important; border-color: rgba(220,53,69,.35) !important; }
+        .legend-swatch { width: 22px; height: 22px; display: inline-block; }
+        .summary-card { border: 0; border-radius: 1rem; box-shadow: 0 8px 24px rgba(16,24,40,0.06); position: sticky; top: 1rem; }
+        .timer-badge { font-size: 1.15rem; letter-spacing: .5px; }
+        .selected-seat-chip { background: #fff8e1; border: 1px solid rgba(255,193,7,.45); color: #664d03; border-radius: 999px; padding: .2rem .6rem; font-weight: 600; font-size: .85rem; }
+        .status-dot { width: .55rem; height: .55rem; border-radius: 50%; display: inline-block; margin-right: .35rem; background: #adb5bd; }
+        .status-live .status-dot { background: #198754; box-shadow: 0 0 0 4px rgba(25,135,84,.15); }
+        .empty-selection { color: #6c757d; font-style: italic; }
+        @media (max-width: 991.98px) { .summary-card { position: static; } }
+    </style>
+</head>
+<body>
+<div class="container py-4 py-lg-5">
+    <div class="page-header p-4 p-lg-4 mb-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+            <div>
+                <h1 class="h3 fw-bold mb-1">Chọn ghế ngồi</h1>
+                <div class="opacity-90" th:text="${layout != null && layout.routeName != null ? layout.routeName : 'Chuyến xe khách'}">Tuyến xe</div>
+                <div class="small mt-1 opacity-75">Mã chuyến: <span th:text="${tripId}">0</span></div>
+            </div>
+            <div class="text-lg-end">
+                <div id="liveStatus" class="status-live small mb-1"><span class="status-dot"></span>Cập nhật trạng thái theo thời gian thực</div>
+                <div class="small opacity-75">Giữ ghế tạm thời trong 10 phút</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="alertArea"></div>
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="card floor-card mb-3">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                        <h2 class="h5 mb-0 fw-bold">Sơ đồ ghế 2 tầng</h2>
+                        <div th:replace="~{booking/seat-legend-component :: seatLegend}"></div>
+                    </div>
+                    <div class="text-muted small">Nhấn vào ghế trống để giữ chỗ. Nhấn lại ghế đang chọn để hủy giữ chỗ.</div>
+                </div>
+            </div>
+
+            <div id="floorsContainer" class="d-grid gap-4">
+                <!-- Floors rendered by JavaScript -->
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card summary-card">
+                <div class="card-body p-4">
+                    <h2 class="h5 fw-bold mb-3">Thông tin lựa chọn</h2>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="text-muted">Thời gian giữ ghế</span>
+                            <span id="timerBadge" class="badge text-bg-secondary timer-badge">--:--</span>
+                        </div>
+                        <div class="progress" role="progressbar" aria-label="Thời gian giữ ghế" style="height: 8px;">
+                            <div id="timerProgress" class="progress-bar bg-warning" style="width: 0%"></div>
+                        </div>
+                        <div id="timerHint" class="small text-muted mt-1">Chọn ghế để bắt đầu đếm ngược 10 phút.</div>
+                    </div>
+
+                    <hr>
+
+                    <div class="mb-3">
+                        <div class="fw-semibold mb-2">Ghế đang chọn (<span id="selectedCount">0</span>)</div>
+                        <div id="selectedSeats" class="d-flex flex-wrap gap-2">
+                            <span class="empty-selection">Chưa chọn ghế nào.</span>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="fw-semibold">Tổng tiền</span>
+                        <span id="totalPrice" class="h4 mb-0 fw-bold text-primary">0 ₫</span>
+                    </div>
+
+                    <div class="row g-2 small text-muted mb-3">
+                        <div class="col-4"><div class="p-2 bg-light rounded">Trống<br><strong id="availableCount" class="text-success">0</strong></div></div>
+                        <div class="col-4"><div class="p-2 bg-light rounded">Giữ<br><strong id="holdCount" class="text-warning">0</strong></div></div>
+                        <div class="col-4"><div class="p-2 bg-light rounded">Đã bán<br><strong id="bookedCount" class="text-danger">0</strong></div></div>
+                    </div>
+
+                    <button id="continueBtn" type="button" class="btn btn-primary w-100" disabled>Tiếp tục thanh toán</button>
+                    <div class="small text-muted mt-2">Ghế đang chọn được giữ tạm thời để tránh trùng lặp khi nhiều khách đặt cùng lúc.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script th:inline="javascript">
+(function () {
+    const tripId = /*[[${tripId}]]*/ 0;
+    const initialLayout = /*[[${layout}]]*/ null;
+    const layoutUrl = `/booking/api/trips/${tripId}/layout`;
+    const selectUrl = `/booking/api/trips/${tripId}/select`;
+    const pollIntervalMs = 5000;
+    const holdDurationSeconds = 10 * 60;
+
+    let currentLayout = initialLayout;
+    let timerSeconds = initialLayout && initialLayout.holdSecondsRemaining != null ? initialLayout.holdSecondsRemaining : null;
+    let timerHandle = null;
+    let pollHandle = null;
+    let pendingSeatIds = new Set();
+
+    const floorsContainer = document.getElementById('floorsContainer');
+    const selectedSeatsEl = document.getElementById('selectedSeats');
+    const selectedCountEl = document.getElementById('selectedCount');
+    const totalPriceEl = document.getElementById('totalPrice');
+    const timerBadge = document.getElementById('timerBadge');
+    const timerProgress = document.getElementById('timerProgress');
+    const timerHint = document.getElementById('timerHint');
+    const continueBtn = document.getElementById('continueBtn');
+    const alertArea = document.getElementById('alertArea');
+    const availableCountEl = document.getElementById('availableCount');
+    const holdCountEl = document.getElementById('holdCount');
+    const bookedCountEl = document.getElementById('bookedCount');
+
+    function formatCurrency(value) {
+        const num = Number(value || 0);
+        return num.toLocaleString('vi-VN') + ' ₫';
+    }
+
+    function escapeHtml(str) {
+        return String(str == null ? '' : str)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function showAlert(type, message) {
+        const id = 'alert-' + Date.now();
+        alertArea.insertAdjacentHTML('afterbegin', `
+            <div id="${id}" class="alert alert-${type} alert-dismissible fade show" role="alert">
+                ${escapeHtml(message)}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>`);
+        setTimeout(() => {
+            const el = document.getElementById(id);
+            if (el && window.bootstrap) bootstrap.Alert.getOrCreateInstance(el).close();
+        }, 4500);
+    }
+
+    function seatClass(seat) {
+        if (seat.heldByCurrentUser) return 'seat-selected';
+        if (seat.status === 'BOOKED' || seat.status === 'HOLD') return 'seat-booked';
+        return 'seat-available';
+    }
+
+    function canInteract(seat) {
+        if (pendingSeatIds.has(seat.seatId)) return false;
+        if (seat.heldByCurrentUser) return true; // allow release
+        return seat.status === 'AVAILABLE';
+    }
+
+    function renderFloors(layout) {
+        const floors = layout && layout.floors ? layout.floors : {};
+        const floorKeys = Object.keys(floors).map(Number).sort((a, b) => a - b);
+        if (floorKeys.length === 0) {
+            floorsContainer.innerHTML = '<div class="alert alert-light border">Chưa có dữ liệu ghế cho chuyến này.</div>';
+            return;
+        }
+        floorsContainer.innerHTML = floorKeys.map(floor => {
+            const seats = (floors[floor] || []).slice().sort((a, b) => {
+                if (a.rowIndex !== b.rowIndex) return a.rowIndex - b.rowIndex;
+                if (a.columnIndex !== b.columnIndex) return a.columnIndex - b.columnIndex;
+                return String(a.seatNumber).localeCompare(String(b.seatNumber));
+            });
+            const buttons = seats.map(seat => {
+                const cls = seatClass(seat);
+                const disabled = canInteract(seat) ? '' : 'disabled';
+                const label = seat.heldByCurrentUser ? 'Đang chọn' : (seat.status === 'AVAILABLE' ? 'Trống' : 'Đã khóa');
+                return `
+                    <button type="button" class="seat-btn ${cls}" data-seat-id="${seat.seatId}" ${disabled}
+                            aria-label="Ghế ${escapeHtml(seat.seatNumber)} ${label}">
+                        <span class="seat-number">${escapeHtml(seat.seatNumber)}</span>
+                        <span class="seat-price">${formatCurrency(seat.price)}</span>
+                    </button>`;
+            }).join('');
+            return `
+                <div class="card floor-card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h3 class="h6 fw-bold mb-0">Tầng ${floor}</h3>
+                            <span class="badge text-bg-light border">${seats.length} ghế</span>
+                        </div>
+                        <div class="bus-frame">
+                            <div class="bus-front">Phía trước xe</div>
+                            <div class="seat-grid">${buttons}</div>
+                        </div>
+                    </div>
+                </div>`;
+        }).join('');
+
+        floorsContainer.querySelectorAll('[data-seat-id]').forEach(btn => {
+            btn.addEventListener('click', () => onSeatClick(Number(btn.getAttribute('data-seat-id'))));
+        });
+    }
+
+    function renderSummary(layout) {
+        const selected = (layout && layout.selectedSeats) ? layout.selectedSeats : [];
+        selectedCountEl.textContent = String(selected.length);
+        totalPriceEl.textContent = formatCurrency(layout ? layout.totalSelectedPrice : 0);
+        availableCountEl.textContent = String(layout && layout.availableCount != null ? layout.availableCount : 0);
+        holdCountEl.textContent = String(layout && layout.holdCount != null ? layout.holdCount : 0);
+        bookedCountEl.textContent = String(layout && layout.bookedCount != null ? layout.bookedCount : 0);
+        continueBtn.disabled = selected.length === 0;
+
+        if (selected.length === 0) {
+            selectedSeatsEl.innerHTML = '<span class="empty-selection">Chưa chọn ghế nào.</span>';
+        } else {
+            selectedSeatsEl.innerHTML = selected.map(s =>
+                `<span class="selected-seat-chip">${escapeHtml(s.seatNumber)} · ${formatCurrency(s.price)}</span>`
+            ).join('');
+        }
+
+        if (layout && layout.holdSecondsRemaining != null && selected.length > 0) {
+            timerSeconds = Number(layout.holdSecondsRemaining);
+            timerHint.textContent = 'Vui lòng hoàn tất trước khi hết thời gian giữ ghế.';
+        } else if (selected.length === 0) {
+            timerSeconds = null;
+            timerHint.textContent = 'Chọn ghế để bắt đầu đếm ngược 10 phút.';
+        }
+        updateTimerDisplay();
+    }
+
+    function updateTimerDisplay() {
+        if (timerSeconds == null) {
+            timerBadge.textContent = '--:--';
+            timerBadge.className = 'badge text-bg-secondary timer-badge';
+            timerProgress.style.width = '0%';
+            timerProgress.className = 'progress-bar bg-warning';
+            return;
+        }
+        const sec = Math.max(0, Math.floor(timerSeconds));
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
+        timerBadge.textContent = String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+        const pct = Math.max(0, Math.min(100, (sec / holdDurationSeconds) * 100));
+        timerProgress.style.width = pct + '%';
+        if (sec <= 60) {
+            timerBadge.className = 'badge text-bg-danger timer-badge';
+            timerProgress.className = 'progress-bar bg-danger';
+        } else if (sec <= 180) {
+            timerBadge.className = 'badge text-bg-warning timer-badge';
+            timerProgress.className = 'progress-bar bg-warning';
+        } else {
+            timerBadge.className = 'badge text-bg-success timer-badge';
+            timerProgress.className = 'progress-bar bg-success';
+        }
+        if (sec === 0) {
+            timerHint.textContent = 'Thời gian giữ ghế đã hết. Sơ đồ sẽ được cập nhật.';
+        }
+    }
+
+    function startTimerTick() {
+        if (timerHandle) clearInterval(timerHandle);
+        timerHandle = setInterval(() => {
+            if (timerSeconds == null) return;
+            if (timerSeconds > 0) {
+                timerSeconds -= 1;
+                updateTimerDisplay();
+                if (timerSeconds === 0) {
+                    refreshLayout();
+                }
+            }
+        }, 1000);
+    }
+
+    function applyLayout(layout) {
+        if (!layout) return;
+        currentLayout = layout;
+        renderFloors(layout);
+        renderSummary(layout);
+    }
+
+    async function refreshLayout(showErrors) {
+        try {
+            const res = await fetch(layoutUrl, { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
+            const data = await res.json();
+            if (!res.ok) {
+                if (showErrors) showAlert('danger', data.message || 'Không thể tải sơ đồ ghế.');
+                return;
+            }
+            applyLayout(data);
+        } catch (e) {
+            if (showErrors) showAlert('danger', 'Lỗi kết nối khi tải sơ đồ ghế.');
+        }
+    }
+
+    function findSeat(layout, seatId) {
+        const floors = layout && layout.floors ? layout.floors : {};
+        for (const key of Object.keys(floors)) {
+            const found = (floors[key] || []).find(s => Number(s.seatId) === Number(seatId));
+            if (found) return found;
+        }
+        return null;
+    }
+
+    async function onSeatClick(seatId) {
+        const seat = findSeat(currentLayout, seatId);
+        if (!seat || pendingSeatIds.has(seatId)) return;
+        const action = seat.heldByCurrentUser ? 'RELEASE' : 'HOLD';
+        if (action === 'HOLD' && seat.status !== 'AVAILABLE') return;
+
+        pendingSeatIds.add(seatId);
+        renderFloors(currentLayout);
+        try {
+            const res = await fetch(selectUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ tripId: tripId, seatId: seatId, action: action })
+            });
+            const data = await res.json();
+            if (!res.ok || data.success === false) {
+                if (data.layout) applyLayout(data.layout);
+                else await refreshLayout(false);
+                showAlert('warning', data.message || 'Không thể cập nhật ghế.');
+                return;
+            }
+            if (data.layout) applyLayout(data.layout);
+            if (action === 'RELEASE') showAlert('secondary', 'Đã hủy giữ ghế.');
+        } catch (e) {
+            showAlert('danger', 'Lỗi kết nối. Vui lòng thử lại.');
+        } finally {
+            pendingSeatIds.delete(seatId);
+            if (currentLayout) renderFloors(currentLayout);
+        }
+    }
+
+    continueBtn.addEventListener('click', () => {
+        const selected = (currentLayout && currentLayout.selectedSeats) ? currentLayout.selectedSeats : [];
+        if (selected.length === 0) return;
+        showAlert('info', 'Ghế đã được giữ tạm thời. Tích hợp bước thanh toán tại luồng đặt vé tiếp theo.');
+    });
+
+    if (currentLayout) applyLayout(currentLayout);
+    startTimerTick();
+    pollHandle = setInterval(() => refreshLayout(false), pollIntervalMs);
+    window.addEventListener('beforeunload', () => {
+        if (pollHandle) clearInterval(pollHandle);
+        if (timerHandle) clearInterval(timerHandle);
+    });
+})();
+</script>
+</body>
+</html>

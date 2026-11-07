@@ -8,7 +8,23 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "bus_trip")
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+/**
+ * Represents a scheduled bus trip. Seats are generated and linked to a trip,
+ * allowing each trip to maintain its own seat availability and pricing context.
+ */
+@Entity
+@Table(name = "bus_trips")
 public class BusTrip {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -16,39 +32,27 @@ public class BusTrip {
     @Column(name = "route_name", nullable = false, length = 150)
     private String routeName;
 
-    @Column(name = "arrival_location", nullable = false,length = 100)
-    private String arrivalLocation;
-
-    @Column(name = "departure_time", nullable = false)
+    @Column(name = "departure_time")
     private LocalDateTime departureTime;
 
-    @Column(name = "ticket_price", nullable = false, precision = 10, scale = 2)
-    private BigDecimal ticketPrice;
+    @Column(name = "total_seats", nullable = false)
+    private Integer totalSeats;
 
-    @Column(name = "total_seats",nullable = false)
-    private Integer toatalSeats;
+    @Column(name = "floor_count", nullable = false)
+    private Integer floorCount = 2;
 
-    @Column(name = "bus_type", length = 50)
-    private String busType;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "company_id", nullable = false)
-    private BusCompany busCompany;
+    @Column(name = "base_price", nullable = false, precision = 12, scale = 2)
+    private BigDecimal basePrice;
 
     public BusTrip() {
     }
 
-    public BusTrip(Long id, String routeName, String arrivalLocation,
-                   LocalDateTime departureTime, BigDecimal ticketPrice,
-                   Integer toatalSeats, String busType, BusCompany busCompany) {
-        this.id = id;
+    public BusTrip(String routeName, LocalDateTime departureTime, Integer totalSeats, Integer floorCount, BigDecimal basePrice) {
         this.routeName = routeName;
-        this.arrivalLocation = arrivalLocation;
         this.departureTime = departureTime;
-        this.ticketPrice = ticketPrice;
-        this.toatalSeats = toatalSeats;
-        this.busType = busType;
-        this.busCompany = busCompany;
+        this.totalSeats = totalSeats;
+        this.floorCount = floorCount;
+        this.basePrice = basePrice;
     }
 
     public Long getId() {
@@ -67,14 +71,6 @@ public class BusTrip {
         this.routeName = routeName;
     }
 
-    public String getArrivalLocation() {
-        return arrivalLocation;
-    }
-
-    public void setArrivalLocation(String arrivalLocation) {
-        this.arrivalLocation = arrivalLocation;
-    }
-
     public LocalDateTime getDepartureTime() {
         return departureTime;
     }
@@ -83,37 +79,27 @@ public class BusTrip {
         this.departureTime = departureTime;
     }
 
-    public BigDecimal getTicketPrice() {
-        return ticketPrice;
+    public Integer getTotalSeats() {
+        return totalSeats;
     }
 
-    public void setTicketPrice(BigDecimal ticketPrice) {
-        this.ticketPrice = ticketPrice;
+    public void setTotalSeats(Integer totalSeats) {
+        this.totalSeats = totalSeats;
     }
 
-    public Integer getToatalSeats() {
-        return toatalSeats;
+    public Integer getFloorCount() {
+        return floorCount;
     }
 
-    public void setToatalSeats(Integer toatalSeats) {
-        this.toatalSeats = toatalSeats;
+    public void setFloorCount(Integer floorCount) {
+        this.floorCount = floorCount;
     }
 
-    public String getBusType() {
-        return busType;
+    public BigDecimal getBasePrice() {
+        return basePrice;
     }
 
-    public void setBusType(String busType) {
-        this.busType = busType;
+    public void setBasePrice(BigDecimal basePrice) {
+        this.basePrice = basePrice;
     }
-
-    public BusCompany getBusCompany() {
-        return busCompany;
-    }
-
-    public void setBusCompany(BusCompany busCompany) {
-        this.busCompany = busCompany;
-    }
-
-
 }
