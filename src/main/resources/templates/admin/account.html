@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/account :: head('Tài khoản quản trị')}"></head>
+<body>
+<nav th:replace="~{fragments/account :: nav}"></nav>
+<main class="container account-main">
+    <div class="account-layout ">
+        <aside class="account-story">
+            <span class="eyebrow">HÀNH TRÌNH CỦA BẠN</span>
+            <h1>Chào mừng quản trị viên.</h1>
+            <p>Tài khoản của bạn đã được xác thực và cấp quyền ADMIN.</p>
+            <div class="journey-line" aria-hidden="true">
+                <span>Hà Nội</span><span class="journey-track"></span><span>Hải Phòng</span>
+            </div>
+            <ul class="story-points">
+                <li>Thông tin tài khoản được quản lý tập trung</li>
+                <li>Truy cập theo đúng quyền của bạn</li>
+                <li>Chủ động cập nhật và bảo vệ tài khoản</li>
+            </ul>
+        </aside>
+        <section class="account-card" aria-labelledby="page-heading">
+            <div th:replace="~{fragments/account :: messages}"></div>
+
+            <span class="section-kicker">KHU VỰC QUẢN TRỊ</span>
+            <h2 id="page-heading">Quyền quản trị đã sẵn sàng</h2>
+            <p class="text-secondary">Bạn có thể truy cập các chức năng quản trị khi các module tương ứng được tích hợp.</p>
+            <a class="btn btn-primary w-100" th:href="@{/user/profile}">Quản lý hồ sơ</a>
+            <form class="mt-3" th:action="@{/auth/logout}" method="post"><button class="btn btn-outline-secondary w-100" type="submit">Đăng xuất</button></form>
+
+        </section>
+    </div>
+</main>
+<footer th:replace="~{fragments/account :: footer}"></footer>
+</body>
+</html>

@@ -1,4 +1,12 @@
 package com.busbooking.bus_ticket_management.model;
+import jakarta.persistence.*;
+import org.springframework.web.bind.annotation.CookieValue;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "bus_trip")
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

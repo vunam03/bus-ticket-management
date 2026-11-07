@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/account :: head('Gửi lại email xác thực')}"></head>
+<body>
+<nav th:replace="~{fragments/account :: nav}"></nav>
+<main class="container account-main">
+    <div class="account-layout ">
+        <aside class="account-story">
+            <span class="eyebrow">HÀNH TRÌNH CỦA BẠN</span>
+            <h1>Xác nhận email để bắt đầu hành trình.</h1>
+            <p>Dùng địa chỉ email bạn đã đăng ký tài khoản.</p>
+            <div class="journey-line" aria-hidden="true">
+                <span>Hà Nội</span><span class="journey-track"></span><span>Hải Phòng</span>
+            </div>
+            <ul class="story-points">
+                <li>Thông tin tài khoản được quản lý tập trung</li>
+                <li>Truy cập theo đúng quyền của bạn</li>
+                <li>Chủ động cập nhật và bảo vệ tài khoản</li>
+            </ul>
+        </aside>
+        <section class="account-card" aria-labelledby="page-heading">
+            <div th:replace="~{fragments/account :: messages}"></div>
+
+            <span class="section-kicker">XÁC THỰC TÀI KHOẢN</span>
+            <h2 id="page-heading">Gửi lại email xác thực</h2>
+            <p class="text-secondary">Kiểm tra cả thư mục Spam. Link đăng ký có hạn 24 giờ.
+                Vui lòng chờ ít nhất 60 giây giữa các lần yêu cầu.</p>
+            <form th:action="@{/auth/resend-verification}" th:object="${emailVerificationRequest}" method="post" data-validate>
+
+                    <div class="field-group">
+                        <label class="form-label" for="email">Email đã đăng ký</label>
+                        <div>
+                            <input class="form-control" type="email" id="email" th:field="*{email}"
+                                   th:classappend="${#fields.hasErrors('email')} ? 'is-invalid'"
+                                   required maxlength="254" autocomplete="email">
+
+                        </div>
+                        <div class="field-error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></div>
+                    </div>
+                <button class="btn btn-primary w-100" type="submit">Gửi lại hướng dẫn</button>
+            </form>
+            <p class="card-bottom"><a th:href="@{/auth/login}">Quay lại đăng nhập</a></p>
+
+        </section>
+    </div>
+</main>
+<footer th:replace="~{fragments/account :: footer}"></footer>
+</body>
+</html>

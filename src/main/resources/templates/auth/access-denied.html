@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/account :: head('Không có quyền truy cập')}"></head>
+<body>
+<nav th:replace="~{fragments/account :: nav}"></nav>
+<main class="container account-main">
+    <div class="account-layout ">
+        <aside class="account-story">
+            <span class="eyebrow">HÀNH TRÌNH CỦA BẠN</span>
+            <h1>Mỗi tài khoản có quyền truy cập riêng.</h1>
+            <p>Trang quản trị chỉ dành cho tài khoản được cấp quyền ADMIN.</p>
+            <div class="journey-line" aria-hidden="true">
+                <span>Hà Nội</span><span class="journey-track"></span><span>Hải Phòng</span>
+            </div>
+            <ul class="story-points">
+                <li>Thông tin tài khoản được quản lý tập trung</li>
+                <li>Truy cập theo đúng quyền của bạn</li>
+                <li>Chủ động cập nhật và bảo vệ tài khoản</li>
+            </ul>
+        </aside>
+        <section class="account-card" aria-labelledby="page-heading">
+            <div th:replace="~{fragments/account :: messages}"></div>
+
+            <span class="section-kicker">403 · TRUY CẬP BỊ TỪ CHỐI</span>
+            <h2 id="page-heading">Bạn chưa có quyền truy cập</h2>
+            <p class="text-secondary">Vui lòng liên hệ quản trị viên nếu bạn cần sử dụng chức năng này.</p>
+            <a class="btn btn-primary w-100" th:href="@{/user/profile}">Về hồ sơ cá nhân</a>
+            <p class="card-bottom"><a th:href="@{/}">Về trang chủ</a></p>
+
+        </section>
+    </div>
+</main>
+<footer th:replace="~{fragments/account :: footer}"></footer>
+</body>
+</html>
