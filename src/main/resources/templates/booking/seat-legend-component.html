@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Seat status legend fragment -->
+<div th:fragment="seatLegend" class="seat-legend d-flex flex-wrap gap-3 align-items-center">
+    <div class="legend-item d-flex align-items-center gap-2">
+        <span class="legend-swatch seat-swatch seat-available" aria-hidden="true"></span>
+        <span>Trống</span>
+    </div>
+    <div class="legend-item d-flex align-items-center gap-2">
+        <span class="legend-swatch seat-swatch seat-selected" aria-hidden="true"></span>
+        <span>Đang chọn</span>
+    </div>
+    <div class="legend-item d-flex align-items-center gap-2">
+        <span class="legend-swatch seat-swatch seat-booked" aria-hidden="true"></span>
+        <span>Đã bán / Đang giữ</span>
+    </div>
+</div>
+</body>
+</html>
