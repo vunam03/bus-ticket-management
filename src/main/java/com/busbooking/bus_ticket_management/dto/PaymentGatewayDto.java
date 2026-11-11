@@ -1,4 +1,12 @@
 package com.busbooking.bus_ticket_management.dto;
 
-public class PaymentGatewayDto {
+public record PaymentGatewayDto(
+
+        boolean success,
+
+        String reference,
+
+        String message
+
+) {
 }
