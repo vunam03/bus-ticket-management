@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${route != null} ? ${route.routeTitle} + ' | Chi tiết tuyến' : 'Chi tiết tuyến'">Chi tiết tuyến</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link th:href="@{/css/account.css}" rel="stylesheet">
+    <link th:href="@{/css/module3.css}" rel="stylesheet">
+</head>
+<body class="m3-page">
+<nav th:replace="~{fragments/account :: nav}"></nav>
+
+<main class="m3-container" style="padding-bottom:60px">
+    <p class="m3-breadcrumb"><a th:href="@{/}" href="/">Trang chủ</a> › Tuyến đường</p>
+
+    <!-- Trường hợp lỗi / không có chuyến -->
+    <div th:if="${error != null}" class="empty-state">
+        <h3>Không xem được tuyến này</h3>
+        <p th:text="${error}">Thông báo lỗi</p>
+        <a class="m3-btn m3-btn-dark" th:href="@{/}" href="/">Về trang chủ để chọn tuyến khác</a>
+    </div>
+
+    <th:block th:if="${route != null}">
+        <div class="route-title">
+            <h1 th:text="${route.routeTitle}">Hà Nội → Hải Phòng</h1>
+            <a class="m3-btn m3-btn-primary"
+               th:href="@{/search(origin=${route.origin}, destination=${route.destination})}" href="#">Xem tất cả chuyến</a>
+        </div>
+
+        <div class="stats">
+            <div class="stat"><div class="k">Giá từ</div><div class="v" th:text="${route.minPriceText}">120.000đ</div></div>
+            <div class="stat"><div class="k">Giá trung bình</div><div class="v" th:text="${route.avgPriceText}">150.000đ</div></div>
+            <div class="stat"><div class="k">Chuyến sắp chạy</div><div class="v" th:text="${route.tripCount}">30</div></div>
+            <div class="stat"><div class="k">Đánh giá nhà xe</div><div class="v" th:text="'★ ' + ${#numbers.formatDecimal(route.avgRating, 1, 'COMMA', 1, 'POINT')}">★ 4.3</div></div>
+        </div>
+
+        <section class="panel" th:if="${!route.dailyPrices.isEmpty()}" aria-labelledby="calTitle">
+            <h2 id="calTitle">Giá thấp nhất 7 ngày tới</h2>
+            <div class="date-strip static">
+                <a class="day" th:each="d : ${route.dailyPrices}"
+                   th:classappend="${d.minPrice == null} ? 'is-none'"
+                   th:href="@{/search(origin=${route.origin}, destination=${route.destination}, travelDate=${d.date})}" href="#">
+                    <span class="day-name" th:text="${d.label}">T2 09/11</span>
+                    <span class="day-rel" th:text="${d.relative}"></span>
+                    <span class="day-price" th:text="${d.priceText}">120.000đ</span>
+                </a>
+            </div>
+        </section>
+
+        <section class="panel" aria-labelledby="nextTitle">
+            <h2 id="nextTitle">Các chuyến sắp khởi hành</h2>
+            <div class="simple-trip" th:each="t : ${route.upcomingTrips}">
+                <div><strong th:text="${t.departureTimeText}">06:00</strong><div class="sub" th:text="${t.dateText}">09/11/2026</div></div>
+                <div><strong th:text="${t.busCompany}">Nhà xe</strong>
+                    <div class="sub" th:text="${t.busTypeLabel} + ' · ' + ${t.seatsText}">Ghế ngồi · Còn 20/45 ghế</div></div>
+                <strong th:text="${t.priceText}">150.000đ</strong>
+                <a class="m3-btn m3-btn-primary m3-btn-sm" th:if="${!t.soldOut}" th:href="@{/booking/trips/{id}/seats(id=${t.id})}" href="#">Chọn chuyến</a>
+                <span class="m3-btn m3-btn-ghost m3-btn-sm" th:if="${t.soldOut}" aria-disabled="true">Hết chỗ</span>
+            </div>
+        </section>
+
+        <section class="panel" aria-labelledby="infoTitle">
+            <h2 id="infoTitle">Thông tin tuyến</h2>
+            <ul class="info-list">
+                <li><span class="k">Loại xe</span><span th:text="${#strings.listJoin(route.busTypeLabels, ', ')}">Giường nằm, Ghế ngồi</span></li>
+                <li><span class="k">Nhà xe</span><span th:text="${#strings.listJoin(route.companies, ', ')}">Phương Trang</span></li>
+                <li><span class="k">Khoảng giá</span><span th:text="${route.minPriceText} + ' - ' + ${route.maxPriceText}">120.000đ - 200.000đ</span></li>
+                <li><span class="k">Tổng số ghế</span><span th:text="${route.totalSeats} + ' ghế trên các chuyến sắp chạy'">200 ghế</span></li>
+            </ul>
+        </section>
+
+        <section class="section" style="padding-top:8px" th:if="${related != null and !related.isEmpty()}" aria-labelledby="relTitle">
+            <h2 id="relTitle">Tuyến liên quan</h2>
+            <div class="route-grid" style="margin-top:12px">
+                <a class="route-card" th:each="r : ${related}"
+                   th:href="@{/routes/detail(origin=${r.origin}, destination=${r.destination})}" href="#">
+                    <h3 th:text="${r.routeTitle}">Hải Phòng → Hà Nội</h3>
+                    <span class="meta" th:text="${r.tripCount} + ' chuyến sắp chạy'">10 chuyến</span>
+                    <span class="from-price" th:text="'Từ ' + ${r.minPriceText}">Từ 120.000đ</span>
+                </a>
+            </div>
+        </section>
+    </th:block>
+</main>
+
+<footer th:replace="~{fragments/account :: footer}"></footer>
+</body>
+</html>
