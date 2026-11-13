@@ -9,6 +9,12 @@ import java.time.LocalDateTime;
  */
 public class SeatStatusDto {
 
+    private String benefits;
+    public String getBenefits() { return benefits; }
+    public void setBenefits(String value) { benefits = value; }
+    private String seatType;
+    public String getSeatType() { return seatType; }
+    public void setSeatType(String value) { seatType = value; }
     private Long seatId;
     private String seatNumber;
     private Integer floorNumber;
@@ -25,6 +31,8 @@ public class SeatStatusDto {
     public static SeatStatusDto fromEntity(Seat seat, boolean heldByCurrentUser, LocalDateTime holdExpiresAt) {
         SeatStatusDto dto = new SeatStatusDto();
         dto.setSeatId(seat.getId());
+        dto.setSeatType(seat.getSeatType().name());
+        dto.setBenefits(seat.getBenefits());
         dto.setSeatNumber(seat.getSeatNumber());
         dto.setFloorNumber(seat.getFloorNumber());
         dto.setRowIndex(seat.getRowIndex());

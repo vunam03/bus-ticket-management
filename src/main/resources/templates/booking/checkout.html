@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{booking/fragments :: head('Xác nhận đặt vé')}"></head>
+<body>
+<header th:replace="~{booking/fragments :: header}"></header>
+<main class="booking-shell">
+<div th:replace="~{booking/fragments :: messages}"></div>
+
+<div class="eyebrow">HÀNH TRÌNH CỦA BẠN</div>
+<div class="page-heading"><div><h1>Sắp đến giờ lên đường<span>.</span></h1><p>Kiểm tra hành trình và chọn cách thanh toán phù hợp.</p></div><span class="step-pill">02 / XÁC NHẬN</span></div>
+<div class="steps"><span>01 · Chọn ghế</span><strong>02 · Xác nhận vé</strong><span>03 · Thanh toán</span></div>
+<div class="checkout-grid">
+<section>
+    <article class="panel journey-panel">
+        <div class="panel-heading"><h2>Thông tin chuyến đi</h2><span class="badge-soft">Một chiều</span></div>
+        <div class="route-large" th:text="${checkout.route}">Hà Nội — Hải Phòng</div>
+        <div class="journey-line"><span class="station-dot"></span><span class="dashed-line"></span><span class="station-dot destination"></span></div>
+        <div class="info-grid">
+            <div><label>KHỞI HÀNH</label><strong th:text="${#temporals.format(checkout.departure, 'HH:mm · dd/MM/yyyy')}"></strong></div>
+            <div><label>NHÀ XE</label><strong th:text="${checkout.company}"></strong></div>
+        </div>
+        <div class="notice">Ghế được giữ đến <strong th:text="${#temporals.format(checkout.holdUntil, 'HH:mm:ss')}"></strong>. Hãy xác nhận trước thời điểm này.</div>
+    </article>
+    <form id="checkout-form" th:action="@{/booking/confirm}" method="post" class="panel payment-form" data-submit-once data-payment-flow>
+        <h2>Phương thức thanh toán</h2>
+        <p class="muted">Chọn cách thanh toán thuận tiện cho hành trình của bạn.</p>
+        <input type="hidden" name="tripId" th:value="${checkout.tripId}">
+        <input type="hidden" name="bookingKey" th:value="${bookingKey}">
+        <input th:each="seat : ${checkout.seats}" type="hidden" name="seatIds" th:value="${seat.id}">
+        <div class="payment-methods" role="group" aria-label="Phương thức thanh toán">
+            <label class="method-option"><input type="radio" name="paymentMethod" value="BANK_TRANSFER" checked required><span class="method-symbol">↗</span><span><strong>Chuyển khoản</strong><small>Chọn ngân hàng &amp; mở QR</small></span></label>
+            <label class="method-option"><input type="radio" name="paymentMethod" value="E_WALLET"><span class="method-symbol">◈</span><span><strong>Ví điện tử</strong><small>MoMo, ZaloPay, ShopeePay</small></span></label>
+            <label class="method-option"><input type="radio" name="paymentMethod" value="CASH"><span class="method-symbol">₫</span><span><strong>Tiền mặt</strong><small>Thanh toán tại quầy</small></span></label>
+        </div>
+        <div th:replace="~{booking/payment-options :: bank(@{/booking/checkout/qr(tripId=${checkout.tripId},seatIds=${selectedSeatIds})}, 'checkout')}"></div>
+        <div th:replace="~{booking/payment-options :: wallet(@{/booking/checkout/qr(tripId=${checkout.tripId},seatIds=${selectedSeatIds})}, 'checkout')}"></div>
+        <div th:replace="~{booking/payment-options :: cash}"></div>
+        <p class="sandbox-note"><span>Thanh toán thử nghiệm</span> Chưa kết nối ngân hàng hoặc ví điện tử. Không chuyển tiền thật.</p>
+        <noscript><p class="notice">Bật JavaScript để chuyển phương thức và mở mã QR.</p></noscript>
+        <label class="terms"><input type="checkbox" required> Tôi đã kiểm tra thông tin và đọc chính sách hủy vé bên cạnh.</label>
+        <button class="button primary full" type="submit">Xác nhận đặt vé <span>→</span></button>
+        <a class="back-link" th:href="@{/booking/trips/{id}/seats(id=${checkout.tripId})}">← Quay lại chọn ghế</a>
+    </form>
+</section>
+<aside>
+    <section class="panel summary-panel">
+        <div class="eyebrow">CHI TIẾT GIÁ VÉ</div><h2>Đơn của bạn</h2>
+        <div class="seat-price" th:each="seat : ${checkout.seats}">
+            <div class="row-between">
+                <strong th:text="'Ghế ' + ${seat.number}"></strong><span class="class-tag" th:classappend="${seat.seatType.name() == 'VIP' ? 'vip' : ''}" th:text="${seat.seatType.name() == 'VIP' ? 'VIP' : 'Tiêu chuẩn'}"></span>
+                <span th:text="${#numbers.formatDecimal(seat.amount, 0, 'COMMA', 0, 'POINT')} + ' ₫'"></span>
+            </div><p class="small muted" style="margin:8px 0 0" th:text="${seat.benefits}"></p>
+        </div>
+        <div class="total"><span>Tổng thanh toán</span><strong th:text="${#numbers.formatDecimal(checkout.total, 0, 'COMMA', 0, 'POINT')} + ' ₫'"></strong></div>
+        <p class="small muted">Mỗi ghế tương ứng một vé. Kiểm tra tổng tiền trước khi xác nhận.</p>
+    </section>
+    <section class="policy-card"><h3>Chủ động với kế hoạch của bạn</h3><ul><li>Trước giờ đi từ 24 giờ: hoàn 100%.</li><li>Từ 6 đến dưới 24 giờ: hoàn 70%.</li><li>Dưới 6 giờ: không tự hủy vé đã thanh toán.</li><li>Vé chưa thanh toán: có thể hủy, tự hết hạn sau tối đa 10 phút.</li></ul></section>
+</aside>
+</div>
+</main>
+<footer th:replace="~{booking/fragments :: footer}"></footer>
+</body>
+</html>

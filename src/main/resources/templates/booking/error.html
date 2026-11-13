@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{booking/fragments :: head('Cần kiểm tra lại')}"></head>
+<body>
+<header th:replace="~{booking/fragments :: header}"></header>
+<main class="booking-shell">
+<div th:replace="~{booking/fragments :: messages}"></div>
+
+<section class="empty-state"><div class="empty-icon">!</div><h1>Chưa thể hoàn tất yêu cầu</h1><p th:text="${message}"></p><div class="action-row"><a class="button primary" th:href="@{/user/my-tickets}">Kiểm tra vé của tôi</a><a class="button secondary" th:href="@{/booking/trips}">Chọn chuyến khác</a></div></section>
+</main>
+<footer th:replace="~{booking/fragments :: footer}"></footer>
+</body>
+</html>

@@ -12,6 +12,8 @@ import com.busbooking.bus_ticket_management.repository.SeatRepository;
 import com.busbooking.bus_ticket_management.service.SeatLockService;
 import com.busbooking.bus_ticket_management.service.SeatService;
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.ZoneId;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -36,6 +38,7 @@ public class SeatLockServiceImpl implements SeatLockService {
 
     private static final Logger log = LoggerFactory.getLogger(SeatLockServiceImpl.class);
 
+    private final Clock clock;
     private final SeatRepository seatRepository;
     private final SeatHoldRepository seatHoldRepository;
     private final BusTripRepository busTripRepository;
@@ -45,7 +48,8 @@ public class SeatLockServiceImpl implements SeatLockService {
             SeatRepository seatRepository,
             SeatHoldRepository seatHoldRepository,
             BusTripRepository busTripRepository,
-            SeatService seatService) {
+            SeatService seatService, Clock clock) {
+        this.clock = clock;
         this.seatRepository = seatRepository;
         this.seatHoldRepository = seatHoldRepository;
         this.busTripRepository = busTripRepository;
@@ -53,10 +57,10 @@ public class SeatLockServiceImpl implements SeatLockService {
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public SeatStatusDto holdSeat(Long tripId, Long seatId, String holderKey) {
         validateHolderKey(holderKey);
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.ofInstant(clock.instant(), ZoneId.of("Asia/Ho_Chi_Minh"));
 
         Seat seat = seatRepository.findByIdAndTripIdForUpdate(seatId, tripId)
             .orElseThrow(() -> new IllegalArgumentException("Seat not found for trip"));
@@ -65,6 +69,7 @@ public class SeatLockServiceImpl implements SeatLockService {
         SeatHold existingHold = seatHoldRepository.findBySeatId(seatId).orElse(null);
         if (existingHold != null && existingHold.isExpired(now)) {
             seatHoldRepository.delete(existingHold);
+            seatHoldRepository.flush();
             existingHold = null;
             if (seat.getSeatStatus() == Seat.SeatStatus.HOLD) {
                 seat.setSeatStatus(Seat.SeatStatus.AVAILABLE);
@@ -96,10 +101,10 @@ public class SeatLockServiceImpl implements SeatLockService {
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public SeatStatusDto releaseSeat(Long tripId, Long seatId, String holderKey) {
         validateHolderKey(holderKey);
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.ofInstant(clock.instant(), ZoneId.of("Asia/Ho_Chi_Minh"));
 
         Seat seat = seatRepository.findByIdAndTripIdForUpdate(seatId, tripId)
             .orElseThrow(() -> new IllegalArgumentException("Seat not found for trip"));
@@ -142,7 +147,7 @@ public class SeatLockServiceImpl implements SeatLockService {
         BusTrip trip = busTripRepository.findById(tripId)
             .orElseThrow(() -> new IllegalArgumentException("Trip not found: " + tripId));
         List<Seat> seats = seatRepository.findByBusTripIdOrderByFloorNumberAscRowIndexAscColumnIndexAscSeatNumberAsc(tripId);
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.ofInstant(clock.instant(), ZoneId.of("Asia/Ho_Chi_Minh"));
         Map<Long, SeatHold> allTripHolds = seatHoldRepository.findByBusTripId(tripId).stream()
             .filter(h -> h.getSeat() != null && h.getSeat().getId() != null)
             .collect(Collectors.toMap(h -> h.getSeat().getId(), h -> h, (a, b) -> a));
@@ -212,28 +217,24 @@ public class SeatLockServiceImpl implements SeatLockService {
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public int releaseExpiredHolds() {
-        LocalDateTime now = LocalDateTime.now();
-        List<SeatHold> expired = seatHoldRepository.findExpiredHoldsWithSeats(now);
-        if (expired.isEmpty()) {
-            return 0;
+        LocalDateTime now = LocalDateTime.ofInstant(clock.instant(), ZoneId.of("Asia/Ho_Chi_Minh"));
+        List<Long> expired = seatHoldRepository.findExpiredSeatIds(now);
+        int released = 0;
+        for (Long seatId : expired) {
+            Seat seat = seatRepository.findSeatForUpdate(seatId).orElse(null);
+            if (seat == null) continue;
+            SeatHold current = seatHoldRepository.findBySeatId(seat.getId()).orElse(null);
+            if (current != null && current.isExpired(now)) {
+                seatHoldRepository.delete(current);
+                if (seat.getSeatStatus() == Seat.SeatStatus.HOLD) {
+                    seat.setSeatStatus(Seat.SeatStatus.AVAILABLE);
+                }
+                released++;
+            }
         }
-        List<Long> holdIds = expired.stream().map(SeatHold::getId).collect(Collectors.toList());
-        List<Long> seatIds = expired.stream()
-            .map(SeatHold::getSeat)
-            .filter(Objects::nonNull)
-            .map(Seat::getId)
-            .filter(Objects::nonNull)
-            .distinct()
-            .collect(Collectors.toList());
-
-        int deleted = seatHoldRepository.deleteByIds(holdIds);
-        if (!seatIds.isEmpty()) {
-            seatRepository.releaseHeldSeats(seatIds, Seat.SeatStatus.AVAILABLE, Seat.SeatStatus.HOLD);
-        }
-        log.info("Released {} expired seat holds affecting {} seats", deleted, seatIds.size());
-        return deleted;
+        return released;
     }
 
     /**
@@ -241,7 +242,7 @@ public class SeatLockServiceImpl implements SeatLockService {
      * already handle expiration, but this keeps the database tidy.
      */
     @Scheduled(fixedDelayString = "${seat.hold.cleanup-delay-ms:60000}")
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public void scheduledReleaseExpiredHolds() {
         try {
             releaseExpiredHolds();
@@ -270,6 +271,8 @@ public class SeatLockServiceImpl implements SeatLockService {
         copy.setRowIndex(seat.getRowIndex());
         copy.setColumnIndex(seat.getColumnIndex());
         copy.setPrice(seat.getPrice());
+        copy.setSeatType(seat.getSeatType());
+        copy.setBenefits(seat.getBenefits());
         copy.setSeatStatus(status);
         return copy;
     }

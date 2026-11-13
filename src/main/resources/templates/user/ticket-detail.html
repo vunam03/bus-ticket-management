@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{booking/fragments :: head('Chi tiết vé')}"></head>
+<body>
+<header th:replace="~{booking/fragments :: header}"></header>
+<main class="booking-shell">
+<div th:replace="~{booking/fragments :: messages}"></div>
+
+<a class="back-link" th:href="@{/user/my-tickets}">← Vé của tôi</a>
+<div class="page-heading"><div><div class="eyebrow">THÔNG TIN VÉ</div><h1 th:text="${ticket.route}"></h1><p class="code" th:text="${ticket.code}"></p></div><a class="button secondary" th:href="@{/user/tickets/{code}/pdf(code=${ticket.code})}">↓ Tải vé PDF</a></div>
+<section class="boarding-success" th:if="${ticket.status.name() == 'CONFIRMED'}">
+<div class="success-seal">✓</div><div><div class="eyebrow">HÀNH TRÌNH ĐÃ XÁC NHẬN</div><h2>Thanh toán thành công. Sẵn sàng lên đường!</h2><p>Vé điện tử đã được lưu trong tài khoản. Tải vé để thuận tiện tra cứu khi cần.</p></div>
+<a class="button primary" th:href="@{/user/tickets/{code}/pdf(code=${ticket.code})}">Tải vé điện tử ↓</a></section>
+<div class="steps"><span>01 · Chọn ghế</span><span>02 · Xác nhận</span><strong th:text="${ticket.status.name() == 'CONFIRMED' ? '03 · Hoàn tất' : '03 · Thanh toán'}"></strong></div>
+<div class="checkout-grid"><section>
+<article class="panel journey-panel">
+    <div class="row-between"><h2>Chi tiết hành trình</h2><span class="status-badge" th:classappend="${ticket.status.name().toLowerCase()}" th:text="${ticket.status.name() == 'CONFIRMED' ? 'Đã xác nhận' : (ticket.status.name() == 'PENDING' ? 'Chờ thanh toán' : 'Đã hủy')}"></span></div>
+    <div class="info-grid detail-grid">
+        <div><label>HÀNH KHÁCH</label><strong th:text="${ticket.passenger}"></strong></div>
+        <div><label>NHÀ XE</label><strong th:text="${ticket.company}"></strong></div>
+        <div><label>KHỞI HÀNH</label><strong th:text="${#temporals.format(ticket.departure, 'HH:mm · dd/MM/yyyy')}"></strong></div>
+        <div><label>HẠNG VÉ</label><strong class="class-tag" th:classappend="${ticket.seatType.name() == 'VIP' ? 'vip' : ''}" th:text="${ticket.seatType.name() == 'VIP' ? 'VIP' : 'Tiêu chuẩn'}"></strong></div>
+        <div><label>SỐ GHẾ</label><strong class="seat-number" th:text="${ticket.seat}"></strong></div>
+        <div><label>THANH TOÁN</label><strong th:text="${ticket.paymentStatus.name() == 'PAID' ? 'Đã thanh toán' : (ticket.paymentStatus.name() == 'REFUNDED' ? 'Đã hoàn tiền' : 'Chưa thanh toán')}"></strong></div>
+        <div><label>PHƯƠNG THỨC</label><strong th:text="${ticket.method.name() == 'CASH' ? 'Tiền mặt' : (ticket.method.name() == 'BANK_TRANSFER' ? 'Chuyển khoản' : 'Ví điện tử')}"></strong></div>
+    </div>
+    <section class="notice" style="background:#f7f4e9"><strong>Quyền lợi đi kèm vé</strong><p style="margin:8px 0 0" th:text="${ticket.benefits}"></p></section>
+    <div class="notice" th:if="${ticket.payable}">Thời gian thanh toán còn <strong data-countdown th:attr="data-deadline=${ticket.expiresAt}">…</strong>. Hết hạn, vé sẽ bị hủy và ghế được mở lại.</div>
+    <div class="notice notice-error" th:if="${ticket.status.name() == 'PENDING' and !ticket.payable}">Đã hết hạn thanh toán. Hệ thống sẽ tự hủy vé; bạn có thể hủy ngay bên dưới.</div>
+    <div class="notice" th:if="${ticket.cancelledAt != null}"><span th:text="${ticket.cancellationReason}"></span><br>Khoản hoàn (thử nghiệm): <strong th:text="${ticket.refundAmount == null ? '0 ₫' : #numbers.formatDecimal(ticket.refundAmount, 0, 'COMMA', 0, 'POINT') + ' ₫'}"></strong></div>
+</article>
+<article class="panel" th:if="${ticket.payable}">
+    <div class="panel-heading"><div><div class="eyebrow">HOÀN TẤT ĐẶT VÉ</div><h2>Thanh toán vé</h2></div><span class="badge-soft">Chờ thanh toán</span></div>
+    <form th:if="${demoPayments}" th:action="@{/payments/{code}/simulate(code=${ticket.code})}" method="post"
+          data-submit-once data-payment-flow th:attr="data-payment-method=${ticket.method.name()}">
+        <div th:if="${ticket.method.name() == 'BANK_TRANSFER'}"><div th:replace="~{booking/payment-options :: bank(@{/user/tickets/{code}/payment-qr(code=${ticket.code})}, 'ticket')}"></div></div>
+        <div th:if="${ticket.method.name() == 'E_WALLET'}"><div th:replace="~{booking/payment-options :: wallet(@{/user/tickets/{code}/payment-qr(code=${ticket.code})}, 'ticket')}"></div></div>
+        <div th:if="${ticket.method.name() == 'CASH'}"><div th:replace="~{booking/payment-options :: cash}"></div></div>
+        <p class="sandbox-note"><span>Thanh toán thử nghiệm</span> Các nút bên dưới chỉ cập nhật trạng thái vé trong hệ thống; không thu tiền thật.</p>
+        <div class="action-row">
+            <button class="button primary" type="submit" name="success" value="true" th:text="${ticket.method.name() == 'CASH' ? 'Thử xác nhận nhận tiền mặt' : 'Thử thanh toán thành công'}"></button>
+            <button class="button secondary" type="submit" name="success" value="false">Thử giao dịch thất bại</button>
+        </div>
+    </form>
+    <p class="notice" th:unless="${demoPayments}">Thanh toán trực tuyến hiện chưa khả dụng. Vui lòng liên hệ nhà xe.</p>
+</article>
+<article class="panel transactions-panel"><h2>Lịch sử giao dịch</h2>
+    <p class="muted" th:if="${#lists.isEmpty(transactions)}">Chưa có giao dịch. Các lần thử thanh toán sẽ được ghi lại tại đây.</p>
+    <div class="table-scroll" th:unless="${#lists.isEmpty(transactions)}"><table><thead><tr><th>Loại</th><th>Số tiền</th><th>Kết quả</th><th>Kênh thanh toán</th><th>Thông tin</th></tr></thead><tbody>
+        <tr th:each="tx : ${transactions}"><td th:text="${tx.transactionKind == 'REFUND' ? 'Hoàn tiền' : 'Thanh toán'}"></td><td th:text="${#numbers.formatDecimal(tx.amount, 0, 'COMMA', 0, 'POINT')} + ' ₫'"></td><td th:text="${tx.status.name() == 'SUCCESS' ? 'Thành công' : (tx.status.name() == 'FAILED' ? 'Thất bại' : 'Đang xử lý')}"></td><td th:text="${tx.paymentChannel == null ? '—' : tx.paymentChannel}"></td><td><span th:text="${tx.failureReason != null ? tx.failureReason : tx.providerReference}"></span><small class="code" th:text="${tx.transactionCode}"></small></td></tr>
+    </tbody></table></div>
+</article>
+<article id="cancel-ticket" class="panel cancel-panel" th:if="${ticket.cancellable}"><h2>Thay đổi kế hoạch?</h2><p>Tiền hoàn dự kiến: <strong th:text="${#numbers.formatDecimal(ticket.refundPreview, 0, 'COMMA', 0, 'POINT')} + ' ₫'"></strong>. Số tiền được tính lại lúc xác nhận hủy.</p><small class="muted">Vé đã trả tiền: trước 24 giờ hoàn 100%, từ 6–24 giờ hoàn 70%, dưới 6 giờ không hủy.</small>
+    <form th:action="@{/tickets/cancel}" method="post" data-confirm="Bạn chắc chắn muốn hủy vé? Ghế sẽ được mở cho người khác." data-submit-once>
+        <input type="hidden" name="ticketId" th:value="${ticket.id}"><label for="reason">Lý do hủy</label><textarea id="reason" name="reason" maxlength="255" required rows="2" placeholder="Ví dụ: Tôi thay đổi lịch trình"></textarea><button class="button danger" type="submit">Xác nhận hủy vé</button>
+    </form>
+</article>
+</section><aside>
+    <section class="panel summary-panel boarding-pass"><div class="pass-top"><div class="eyebrow">HÀNH TRÌNH / E-TICKET</div><span class="class-tag" th:classappend="${ticket.seatType.name() == 'VIP' ? 'vip' : ''}" th:text="${ticket.seatType.name() == 'VIP' ? 'VIP' : 'TIÊU CHUẨN'}"></span></div><h2 th:text="${ticket.route}"></h2><p class="muted" th:text="${ticket.passenger}"></p><span class="status-badge" th:text="${ticket.status.name() == 'CONFIRMED' ? 'Đã xác nhận' : (ticket.status.name() == 'CANCELLED' ? 'Đã hủy' : 'Chờ thanh toán')}"></span><div class="pass-seat"><div><small>GIỜ KHỞI HÀNH</small><strong th:text="${#temporals.format(ticket.departure, 'HH:mm')}"></strong><span th:text="${#temporals.format(ticket.departure, 'dd/MM/yyyy')}"></span></div><div><small>GHẾ CỦA BẠN</small><strong th:text="${ticket.seat}"></strong></div></div><div class="ticket-perforation"></div><p class="code" th:text="${ticket.code}"></p><details class="ticket-lookup"><summary>Hiện mã tra cứu vé</summary><img class="ticket-qr" width="220" height="220" th:src="@{/user/tickets/{code}/qr(code=${ticket.code})}" alt="QR tra cứu vé"></details><p class="small muted">QR tra cứu chỉ mở thông tin khi đăng nhập tài khoản sở hữu vé.</p><div class="total"><span>Giá vé cuối cùng</span><strong th:text="${#numbers.formatDecimal(ticket.total, 0, 'COMMA', 0, 'POINT')} + ' ₫'"></strong></div><a class="button primary full" th:href="@{/user/tickets/{code}/pdf(code=${ticket.code})}">Tải vé PDF ↓</a><button class="button secondary full" type="button" data-print>In vé</button></section>
+<section class="policy-card travel-checklist"><h3>Trước khi khởi hành</h3><p>01 · Kiểm tra ngày, giờ và số ghế trên vé.</p><p>02 · Chuẩn bị vé điện tử và giấy tờ cần thiết.</p><p>03 · Liên hệ nhà xe để xác nhận điểm đón.</p><small>QR là mã tra cứu; thông tin vé chỉ hiển thị với tài khoản đặt vé.</small></section></aside></div>
+</main>
+<footer th:replace="~{booking/fragments :: footer}"></footer>
+</body>
+</html>

@@ -62,4 +62,5 @@ public interface PaymentTransactionRepository
     Optional<PaymentTransaction> findByTransactionCodeForUpdate(
             @Param("transactionCode") String transactionCode
     );
+    java.util.List<PaymentTransaction> findByTicket_IdOrderByCreatedAtDesc(Long ticketId);
 }

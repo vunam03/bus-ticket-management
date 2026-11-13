@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{booking/fragments :: head('Chọn chuyến xe')}"></head>
+<body>
+<header th:replace="~{booking/fragments :: header}"></header>
+<main class="booking-shell">
+<div th:replace="~{booking/fragments :: messages}"></div>
+
+<div class="eyebrow">ĐI ĐÂU CŨNG CÓ MỘT KHỞI ĐẦU</div><div class="page-heading"><div><h1>Chọn chuyến. Giữ ghế. Lên đường<span>.</span></h1><p>Chọn giờ khởi hành phù hợp và giữ chỗ cho hành trình của bạn.</p></div><span class="step-pill">01 / HÀNH TRÌNH</span></div>
+<section class="empty-state" th:if="${#lists.isEmpty(trips)}"><h2>Chưa có chuyến sắp khởi hành</h2><p>Hiện chưa có lịch chạy phù hợp. Vui lòng quay lại sau để xem các chuyến mới.</p></section>
+<div class="trip-filters" data-trip-filters>
+    <div><label for="trip-search">Tuyến đường hoặc nhà xe</label><input id="trip-search" type="search" placeholder="Tìm hành trình của bạn…" autocomplete="off"></div>
+    <div><label for="trip-date">Ngày khởi hành</label><input id="trip-date" type="date"></div>
+    <button type="button" class="button secondary" data-clear-trip-filter>Xóa bộ lọc</button>
+    <span class="small muted" data-trip-count aria-live="polite"></span>
+</div>
+<p class="notice" data-no-trips hidden>Chưa có chuyến phù hợp với bộ lọc. Hãy thử ngày hoặc tuyến khác.</p>
+<div class="ticket-grid"><article class="ticket-card" th:each="t : ${trips}" data-trip-card th:attr="data-trip-text=${t.routeName + ' ' + t.companyName},data-trip-date=${#temporals.format(t.departureTime, 'yyyy-MM-dd')}"><div class="eyebrow" th:text="${t.companyName}"></div><h2 th:text="${t.routeName}"></h2><p th:text="${#temporals.format(t.departureTime, 'HH:mm · dd/MM/yyyy')}"></p><div class="row-between"><span th:text="${t.busType}"></span><strong class="price" th:text="${#numbers.formatDecimal(t.ticketPrice, 0, 'COMMA', 0, 'POINT')} + ' ₫'"></strong></div><div class="ticket-perforation"></div><a class="button primary full" th:href="@{/booking/trips/{id}/seats(id=${t.id})}">Chọn ghế →</a></article></div>
+</main>
+<footer th:replace="~{booking/fragments :: footer}"></footer>
+</body>
+</html>

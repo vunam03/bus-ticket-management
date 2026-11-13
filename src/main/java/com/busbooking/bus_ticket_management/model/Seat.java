@@ -44,6 +44,17 @@ public class Seat {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "seat_type", length = 20)
+    private SeatType seatType = SeatType.NORMAL;
+    @Column(name = "seat_benefits", length = 500)
+    private String benefits;
+    public String getBenefits() { return benefits == null || benefits.isBlank() ? "Tiện ích theo thông tin nhà xe; vui lòng xác nhận trước khi đặt." : benefits; }
+    public void setBenefits(String value) { benefits = value; }
+    public SeatType getSeatType() { return seatType == null ? SeatType.NORMAL : seatType; }
+    public void setSeatType(SeatType value) { seatType = value == null ? SeatType.NORMAL : value; }
+
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "trip_id", nullable = false)
     private BusTrip busTrip;

@@ -60,4 +60,6 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     Optional<Ticket> findByIdForUpdate(
             @Param("ticketId") Long ticketId
     );
+    java.util.List<Ticket> findByUser_IdAndBookingKeyOrderByIdAsc(Long userId, String bookingKey);
+    java.util.List<Ticket> findByTicketStatusAndExpiresAtBefore(TicketStatus status, java.time.Instant before);
 }

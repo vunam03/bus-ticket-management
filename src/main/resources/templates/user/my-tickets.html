@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{booking/fragments :: head('Vé của tôi')}"></head>
+<body>
+<header th:replace="~{booking/fragments :: header}"></header>
+<main class="booking-shell">
+<div th:replace="~{booking/fragments :: messages}"></div>
+
+<div class="eyebrow">GÓC HÀNH TRÌNH</div><div class="page-heading"><div><h1>Mỗi tấm vé, một chuyến đi<span>.</span></h1><p>Theo dõi, thanh toán và quản lý vé của bạn ở một nơi.</p></div><a class="button primary" th:href="@{/booking/trips}">+ Đặt vé mới</a></div>
+<form class="filter-bar" th:action="@{/user/my-tickets}" method="get">
+    <label for="status">Trạng thái vé</label><select name="status" id="status">
+        <option value="" th:selected="${selectedStatus == ''}">Tất cả</option>
+        <option value="PENDING" th:selected="${selectedStatus == 'PENDING'}">Chờ thanh toán</option>
+        <option value="CONFIRMED" th:selected="${selectedStatus == 'CONFIRMED'}">Đã xác nhận</option>
+        <option value="CANCELLED" th:selected="${selectedStatus == 'CANCELLED'}">Đã hủy</option>
+    </select><button class="button secondary">Lọc vé</button><span class="muted" th:text="${page.totalElements} + ' vé'"></span>
+</form>
+<section class="empty-state" th:if="${page.empty}"><div class="empty-icon">↗</div><h2>Chưa có vé nào ở đây</h2><p>Một chuyến đi mới đang chờ bạn. Hoặc thử thay đổi bộ lọc.</p><a class="button primary" th:href="@{/booking/trips}">Khám phá chuyến xe</a></section>
+<div class="ticket-grid">
+<article class="ticket-card" th:each="t : ${page.content}">
+    <div class="row-between"><span class="eyebrow" th:text="${t.company}"></span><span class="status-badge" th:classappend="${t.status.name().toLowerCase()}" th:text="${t.status.name() == 'CONFIRMED' ? 'Đã xác nhận' : (t.status.name() == 'PENDING' ? 'Chờ thanh toán' : 'Đã hủy')}"></span></div>
+    <h2 th:text="${t.route}"></h2>
+    <div class="info-grid"><div><label>KHỞI HÀNH</label><strong th:text="${#temporals.format(t.departure, 'HH:mm · dd/MM/yyyy')}"></strong></div><div><label>GHẾ</label><strong th:text="${t.seat}"></strong></div></div>
+    <div class="ticket-perforation"></div>
+    <div class="row-between"><strong class="price" th:text="${#numbers.formatDecimal(t.total, 0, 'COMMA', 0, 'POINT')} + ' ₫'"></strong><a class="button secondary" th:href="@{/user/tickets/{code}(code=${t.code})}">Chi tiết →</a></div>
+    <div class="action-row">
+        <a class="back-link" th:href="@{/user/tickets/{code}/pdf(code=${t.code})}" target="_blank" rel="noopener">In / tải vé PDF</a>
+        <a class="back-link" th:if="${t.cancellable}" th:href="@{/user/tickets/{code}(code=${t.code})} + '#cancel-ticket'">Hủy vé</a>
+    </div>
+</article></div>
+<nav class="pagination-bar" aria-label="Phân trang" th:if="${page.totalPages > 1}">
+    <a class="button secondary" th:if="${page.hasPrevious()}" th:href="@{/user/my-tickets(page=${page.number - 1},status=${selectedStatus})}">← Trước</a>
+    <span th:text="'Trang ' + ${page.number + 1} + ' / ' + ${page.totalPages}"></span>
+    <a class="button secondary" th:if="${page.hasNext()}" th:href="@{/user/my-tickets(page=${page.number + 1},status=${selectedStatus})}">Sau →</a>
+</nav>
+</main>
+<footer th:replace="~{booking/fragments :: footer}"></footer>
+</body>
+</html>

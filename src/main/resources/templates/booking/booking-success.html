@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{booking/fragments :: head('Đã tạo vé')}"></head>
+<body>
+<header th:replace="~{booking/fragments :: header}"></header>
+<main class="booking-shell">
+<div th:replace="~{booking/fragments :: messages}"></div>
+
+<section class="success-intro"><div class="success-mark">✓</div><div class="eyebrow">ĐÃ LƯU YÊU CẦU</div><h1>Vé đã sẵn sàng để thanh toán<span>.</span></h1><p>Hoàn tất thanh toán từng vé trong tối đa 10 phút để xác nhận hành trình.</p></section>
+<div class="ticket-grid">
+<article class="ticket-card" th:each="t : ${tickets}">
+    <div class="row-between"><span class="eyebrow">HÀNH TRÌNH</span><span class="badge-soft" th:text="${t.status.name() == 'CONFIRMED' ? 'Đã xác nhận' : (t.status.name() == 'CANCELLED' ? 'Đã hủy' : 'Chờ thanh toán')}"></span></div>
+    <h2 th:text="${t.route}"></h2>
+    <div class="row-between"><span th:text="'Ghế ' + ${t.seat}"></span><strong class="price" th:text="${#numbers.formatDecimal(t.amount, 0, 'COMMA', 0, 'POINT')} + ' ₫'"></strong></div>
+    <div class="ticket-perforation"></div>
+    <small class="code" th:text="${t.code}"></small>
+    <a class="button primary full" th:href="@{/user/tickets/{code}(code=${t.code})}">Xem vé &amp; thanh toán →</a>
+</article>
+</div><div class="center"><a class="back-link" th:href="@{/user/my-tickets}">Xem tất cả vé của tôi</a></div>
+</main>
+<footer th:replace="~{booking/fragments :: footer}"></footer>
+</body>
+</html>

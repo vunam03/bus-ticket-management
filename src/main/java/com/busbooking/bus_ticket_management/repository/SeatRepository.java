@@ -35,4 +35,7 @@ public interface SeatRepository extends JpaRepository<Seat, Long> {
     int releaseHeldSeats(@Param("seatIds") List<Long> seatIds,
                          @Param("available") Seat.SeatStatus available,
                          @Param("hold") Seat.SeatStatus hold);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from Seat s where s.id = :id")
+    Optional<Seat> findSeatForUpdate(@Param("id") Long id);
 }

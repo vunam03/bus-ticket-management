@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"><body>
+<section th:fragment="bank(qrUrl, prefix)" class="payment-panel" data-payment-panel="BANK_TRANSFER">
+    <div class="payment-panel-heading"><span class="channel-symbol bank-symbol">↗</span><div><h3>Chuyển khoản ngân hàng</h3><p>Chọn ngân hàng trước khi mở mã thanh toán.</p></div></div>
+    <label class="field-label" th:for="${prefix + '-bank'}">Ngân hàng</label>
+    <select class="channel-select" name="channel" data-channel-select required th:id="${prefix + '-bank'}">
+        <option value="VIETCOMBANK">Vietcombank</option><option value="BIDV">BIDV</option><option value="MB">MB Bank</option>
+    </select>
+    <details class="qr-disclosure" data-payment-qr>
+        <summary><span class="qr-symbol">▦</span><span>Hiện mã QR thanh toán</span><span class="chevron">⌄</span></summary>
+        <div class="qr-content"><div class="qr-frame"><img width="200" height="200" th:attr="data-qr-src=${qrUrl}" alt="QR thanh toán thử nghiệm"></div>
+        <div><span class="eyebrow" data-channel-label>Vietcombank</span><h3>Thông tin thanh toán</h3><p>Mở mã để xem thông tin giao dịch. Mã thử nghiệm không thực hiện chuyển tiền.</p><span class="qr-state" data-qr-state aria-live="polite"></span></div></div>
+    </details>
+</section>
+<section th:fragment="wallet(qrUrl, prefix)" class="payment-panel" data-payment-panel="E_WALLET">
+    <div class="payment-panel-heading"><span class="channel-symbol wallet-symbol">◈</span><div><h3>Ví điện tử</h3><p>Chọn ví bạn muốn sử dụng cho giao dịch.</p></div></div>
+    <label class="field-label" th:for="${prefix + '-wallet'}">Ví thanh toán</label>
+    <select class="channel-select" name="channel" data-channel-select required th:id="${prefix + '-wallet'}">
+        <option value="MOMO">MoMo</option><option value="ZALOPAY">ZaloPay</option><option value="SHOPEEPAY">ShopeePay</option>
+    </select>
+    <details class="qr-disclosure" data-payment-qr>
+        <summary><span class="qr-symbol">▦</span><span>Mở mã thanh toán qua ví</span><span class="chevron">⌄</span></summary>
+        <div class="qr-content"><div class="qr-frame"><img width="200" height="200" th:attr="data-qr-src=${qrUrl}" alt="QR ví điện tử thử nghiệm"></div>
+        <div><span class="eyebrow" data-channel-label>MoMo</span><h3>Thanh toán bằng ví</h3><p>Giao diện đang ở chế độ thử nghiệm; không mở ứng dụng ví hoặc trừ tiền thật.</p><span class="qr-state" data-qr-state aria-live="polite"></span></div></div>
+    </details>
+</section>
+<section th:fragment="cash" class="payment-panel cash-panel" data-payment-panel="CASH">
+    <div class="payment-panel-heading"><span class="channel-symbol cash-symbol">₫</span><div><h3>Thanh toán tiền mặt</h3><p>Xuất trình mã vé để nhân viên kiểm tra tại quầy.</p></div></div>
+    <ol class="payment-instructions"><li>Lưu mã vé sau khi đặt chỗ.</li><li>Hoàn tất thanh toán trước thời hạn hiển thị trên vé.</li><li>Vé được xác nhận sau khi ghi nhận thanh toán.</li></ol>
+    <p class="cash-note">Phương thức này không sử dụng mã QR thanh toán.</p>
+</section>
+</body></html>

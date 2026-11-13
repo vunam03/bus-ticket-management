@@ -1,5 +1,7 @@
 package com.busbooking.bus_ticket_management.service;
 
+import com.busbooking.bus_ticket_management.exception.BusTripNotFoundException;
+import com.busbooking.bus_ticket_management.exception.BusCompanyNotFoundException;
 import com.busbooking.bus_ticket_management.dto.BusTripRequest;
 import com.busbooking.bus_ticket_management.dto.BusTripResponse;
 import com.busbooking.bus_ticket_management.model.BusCompany;
@@ -22,20 +24,22 @@ public class BusTripService {
     @Autowired
     private BusCompanyRepository busCompanyRepository;
 
+    @Transactional(readOnly = true)
     public List<BusTripResponse> getAllTrips() {
         return busTripRepository.findAll().stream().map(this::convertToResponse).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public BusTripResponse getTripById(Long id) {
         BusTrip trip = busTripRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy chuyến xe với ID: " + id));
+                .orElseThrow(() -> new BusTripNotFoundException("Không tìm thấy chuyến xe với ID: " + id));
         return convertToResponse(trip);
     }
 
     @Transactional
     public void createTrip(BusTripRequest request) {
         BusCompany company = busCompanyRepository.findById(request.getCompanyId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy nhà xe với ID: " + request.getCompanyId()));
+                .orElseThrow(() -> new BusCompanyNotFoundException("Không tìm thấy nhà xe với ID: " + request.getCompanyId()));
 
         BusTrip trip = new BusTrip();
         trip.setRouteName(request.getRouteName());
@@ -55,10 +59,10 @@ public class BusTripService {
     @Transactional
     public void updateTrip(Long id, BusTripRequest request) {
         BusTrip trip = busTripRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy chuyến xe với ID: " + id));
+                .orElseThrow(() -> new BusTripNotFoundException("Không tìm thấy chuyến xe với ID: " + id));
 
         BusCompany company = busCompanyRepository.findById(request.getCompanyId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy nhà xe với ID: " + request.getCompanyId()));
+                .orElseThrow(() -> new BusCompanyNotFoundException("Không tìm thấy nhà xe với ID: " + request.getCompanyId()));
 
         trip.setRouteName(request.getRouteName());
         trip.setDepartureLocation(request.getDepartureLocation());
@@ -76,7 +80,7 @@ public class BusTripService {
     @Transactional
     public void deleteTrip(Long id) {
         if (!busTripRepository.existsById(id)) {
-            throw new RuntimeException("Không tìm thấy chuyến xe để xóa!");
+            throw new BusTripNotFoundException("Không tìm thấy chuyến xe để xóa!");
         }
         busTripRepository.deleteById(id);
     }

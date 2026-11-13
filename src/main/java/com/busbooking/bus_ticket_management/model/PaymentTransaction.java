@@ -81,6 +81,20 @@ public class PaymentTransaction {
     @Column(name = "completed_at")
     private Instant completedAt;
 
+    @Column(name = "payment_channel", length = 30)
+    private String paymentChannel;
+
+    public String getPaymentChannel() {
+        return paymentChannel;
+    }
+
+    public void setPaymentChannel(String value) {
+        if (value == null || value.isBlank() || value.length() > 30) {
+            throw new IllegalArgumentException("Kênh thanh toán không hợp lệ.");
+        }
+        this.paymentChannel = value;
+    }
+
     @Version
     private Long version;
 
@@ -161,6 +175,17 @@ public class PaymentTransaction {
             throw new IllegalStateException(
                     "Giao dịch đã kết thúc, không thể cập nhật kết quả.");
         }
+    }
+
+    @Column(name = "transaction_kind", nullable = false, columnDefinition = "varchar(20) default 'PAYMENT'")
+    private String transactionKind = "PAYMENT";
+
+    public String getTransactionKind() { return transactionKind; }
+
+    public static PaymentTransaction refund(Ticket ticket, BigDecimal amount) {
+        PaymentTransaction result = new PaymentTransaction(ticket, amount, ticket.getPaymentMethod());
+        result.transactionKind = "REFUND";
+        return result;
     }
 
     public Long getId() {

@@ -23,6 +23,17 @@ public class Ticket {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "seat_type", length = 20)
+    private SeatType seatType;
+    @Column(name = "seat_benefits", length = 500)
+    private String benefits;
+    public String getBenefits() { return benefits == null || benefits.isBlank() ? "Tiện ích chưa được ghi nhận trên vé này." : benefits; }
+    public void setBenefits(String value) { benefits = value; }
+    public SeatType getSeatType() { return seatType == null ? SeatType.NORMAL : seatType; }
+    public void setSeatType(SeatType value) { seatType = value; }
+
+
     @Column(
             name = "ticket_code",
             nullable = false,
@@ -80,6 +91,36 @@ public class Ticket {
 
     @Version
     private Long version;
+
+    @Column(name = "booking_key", length = 36)
+    private String bookingKey;
+
+    public String getBookingKey() { return bookingKey; }
+    public void setBookingKey(String value) { this.bookingKey = value; }
+
+    @Column(name = "refund_amount", precision = 14, scale = 2)
+    private BigDecimal refundAmount;
+
+    public BigDecimal getRefundAmount() { return refundAmount; }
+    public void setRefundAmount(BigDecimal value) { this.refundAmount = value; }
+
+    @Column(name = "expires_at")
+    private Instant expiresAt;
+
+    public Instant getExpiresAt() { return expiresAt; }
+    public void setExpiresAt(Instant value) { this.expiresAt = value; }
+
+    @Column(name = "cancelled_at")
+    private Instant cancelledAt;
+
+    public Instant getCancelledAt() { return cancelledAt; }
+    public void setCancelledAt(Instant value) { this.cancelledAt = value; }
+
+    @Column(name = "cancellation_reason", length = 255)
+    private String cancellationReason;
+
+    public String getCancellationReason() { return cancellationReason; }
+    public void setCancellationReason(String value) { this.cancellationReason = value; }
 
     public Ticket() {
     }

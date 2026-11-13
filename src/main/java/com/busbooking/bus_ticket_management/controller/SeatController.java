@@ -46,7 +46,7 @@ public class SeatController {
     @GetMapping("/booking/trips/{tripId}/seats")
     public String seatSelectionPage(@PathVariable Long tripId, HttpSession session, Model model) {
         seatService.ensureSeatsInitialized(tripId);
-        String holderKey = resolveHolderKey(session, null);
+        String holderKey = resolveHolderKey(session);
         SeatLayoutResponse layout = seatLockService.getSeatLayout(tripId, holderKey);
         model.addAttribute("tripId", tripId);
         model.addAttribute("layout", layout);
@@ -61,7 +61,7 @@ public class SeatController {
     @ResponseBody
     public ResponseEntity<?> getSeatLayout(@PathVariable Long tripId, HttpSession session) {
         try {
-            String holderKey = resolveHolderKey(session, null);
+            String holderKey = resolveHolderKey(session);
             SeatLayoutResponse layout = seatLockService.getSeatLayout(tripId, holderKey);
             return ResponseEntity.ok(layout);
         } catch (IllegalArgumentException ex) {
@@ -73,8 +73,7 @@ public class SeatController {
     }
 
     /**
-     * Holds or releases a seat. The server uses the session-based holder key unless
-     * an explicit key is provided by the client.
+     * Holds or releases a seat using only the server-owned session holder key.
      */
     @PostMapping("/booking/api/trips/{tripId}/select")
     @ResponseBody
@@ -94,7 +93,7 @@ public class SeatController {
             return ResponseEntity.badRequest().body(errorPayload("VALIDATION_ERROR", "Trip id không khớp."));
         }
 
-        String holderKey = resolveHolderKey(session, request.getHolderKey());
+        String holderKey = resolveHolderKey(session);
         String action = request.getAction() == null ? "" : request.getAction().trim().toUpperCase();
         try {
             SeatStatusDto seatStatus;
@@ -128,17 +127,12 @@ public class SeatController {
         }
     }
 
-    private String resolveHolderKey(HttpSession session, String explicitHolderKey) {
-        if (explicitHolderKey != null && !explicitHolderKey.trim().isEmpty()) {
-            String key = explicitHolderKey.trim();
-            session.setAttribute(HOLDER_KEY_ATTR, key);
-            return key;
-        }
+    private String resolveHolderKey(HttpSession session) {
         Object existing = session.getAttribute(HOLDER_KEY_ATTR);
         if (existing instanceof String && !((String) existing).trim().isEmpty()) {
             return (String) existing;
         }
-        String generated = "sess_" + session.getId();
+        String generated = java.util.UUID.randomUUID().toString();
         session.setAttribute(HOLDER_KEY_ATTR, generated);
         return generated;
     }
