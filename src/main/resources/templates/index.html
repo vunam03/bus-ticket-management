@@ -1,23 +1,83 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Đặt Vé Xe Khách</title>
-    <!-- Tích hợp Bootstrap 5 CSS -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="ctx" th:content="@{/}" content="/">
+    <title>Hệ Thống Đặt Vé Xe Khách | Tìm chuyến xe</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link th:href="@{/css/account.css}" rel="stylesheet">
+    <link th:href="@{/css/module3.css}" rel="stylesheet">
 </head>
-<body>
+<body class="m3-page">
+<nav th:replace="~{fragments/account :: nav}"></nav>
 
-<div class="container mt-5">
-    <div class="card shadow-sm p-4 text-center">
-        <h1 class="text-primary fw-bold">Hệ Thống Đặt Vé Xe Khách Hà Nội - Hải Phòng</h1>
-        <p class="text-muted">Giao diện đã tích hợp thành công Bootstrap 5!</p>
-        <button class="btn btn-success d-inline-block mx-auto">Đặt Vé Ngay</button>
+<main>
+    <section class="hero">
+        <div class="m3-container">
+            <h1>Tìm chuyến xe khách phù hợp</h1>
+            <p>Chọn tuyến, ngày đi và loại xe. Kết quả được sắp xếp theo giá, giờ đi hoặc đánh giá.</p>
+        </div>
+    </section>
+
+    <div class="m3-container">
+        <form id="searchForm" class="ticket-form" th:action="@{/search}" action="/search" method="get" novalidate>
+            <label class="field">
+                <span>Điểm đi</span>
+                <input id="origin" name="origin" list="originList" autocomplete="off" placeholder="Ví dụ: Hà Nội" required>
+            </label>
+            <button id="swapBtn" class="swap-btn" type="button" aria-label="Đổi chiều điểm đi và điểm đến">⇄</button>
+            <label class="field">
+                <span>Điểm đến</span>
+                <input id="destination" name="destination" list="destinationList" autocomplete="off" placeholder="Ví dụ: Hải Phòng" required>
+            </label>
+            <label class="field field-date">
+                <span>Ngày đi</span>
+                <input id="travelDate" name="travelDate" type="date" required>
+            </label>
+
+            <div class="row-2">
+                <label class="field">
+                    <span>Loại xe</span>
+                    <select name="busTypes">
+                        <option value="">Tất cả loại xe</option>
+                        <option value="GIUONG_NAM">Giường nằm</option>
+                        <option value="LIMOUSINE">Limousine</option>
+                        <option value="GHE_NGOI">Ghế ngồi</option>
+                    </select>
+                </label>
+                <label class="field">
+                    <span>Khung giờ đi</span>
+                    <select name="timeSlots">
+                        <option value="">Cả ngày</option>
+                        <option value="MORNING">Sáng (05:00 - 11:59)</option>
+                        <option value="NOON">Trưa (12:00 - 17:59)</option>
+                        <option value="EVENING">Tối (18:00 - 04:59)</option>
+                    </select>
+                </label>
+                <div class="quick-dates" role="group" aria-label="Chọn nhanh ngày đi">
+                    <button type="button" class="chip-btn" data-day-offset="0">Hôm nay</button>
+                    <button type="button" class="chip-btn" data-day-offset="1">Ngày mai</button>
+                </div>
+                <button type="submit" class="m3-btn m3-btn-primary" style="margin-left:auto;min-width:160px;height:44px">Tìm chuyến xe</button>
+            </div>
+            <p id="formError" class="form-error" role="alert"></p>
+        </form>
+        <datalist id="originList"></datalist>
+        <datalist id="destinationList"></datalist>
+
+        <section id="popular" class="section" aria-labelledby="popularTitle">
+            <h2 id="popularTitle">Tuyến phổ biến</h2>
+            <p class="lead">Các tuyến có nhiều chuyến sắp chạy nhất.</p>
+            <div id="popularRoutes" class="route-grid" aria-live="polite">
+                <p class="empty-note">Đang tải tuyến phổ biến...</p>
+            </div>
+        </section>
     </div>
-</div>
+</main>
 
-<!-- Tích hợp JS của Bootstrap 5 -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<footer th:replace="~{fragments/account :: footer}"></footer>
+<script th:src="@{/js/common.js}" src="/js/common.js"></script>
+<script th:src="@{/js/index.js}" src="/js/index.js"></script>
 </body>
 </html>

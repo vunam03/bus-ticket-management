@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="ctx" th:content="@{/}" content="/">
+    <title th:text="${result.title} + ' | Kết quả tìm kiếm'">Kết quả tìm kiếm</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link th:href="@{/css/account.css}" rel="stylesheet">
+    <link th:href="@{/css/module3.css}" rel="stylesheet">
+</head>
+<body class="m3-page">
+<nav th:replace="~{fragments/account :: nav}"></nav>
+
+<!-- Thanh sửa tuyến: đổi tuyến thì tải lại trang (khác với bộ lọc bên dưới dùng AJAX) -->
+<section class="route-bar" aria-label="Sửa tìm kiếm">
+    <div class="m3-container">
+        <form th:action="@{/search}" action="/search" method="get">
+            <label class="field"><span>Điểm đi</span>
+                <input id="origin" name="origin" list="originList" autocomplete="off" th:value="${filter.origin}" required></label>
+            <label class="field"><span>Điểm đến</span>
+                <input id="destination" name="destination" list="destinationList" autocomplete="off" th:value="${filter.destination}" required></label>
+            <label class="field"><span>Ngày đi</span>
+                <input name="travelDate" type="date" th:value="${filter.travelDate}"></label>
+            <button class="m3-btn m3-btn-primary" type="submit" style="height:44px">Tìm lại</button>
+        </form>
+        <datalist id="originList"></datalist>
+        <datalist id="destinationList"></datalist>
+    </div>
+</section>
+
+<main id="resultsApp" class="results-shell"
+      th:attr="data-origin=${filter.origin}, data-destination=${filter.destination}, data-travel-date=${filter.travelDate}, data-sort-by=${result.sortBy}, data-filter-url=@{/search/filter}, data-search-url=@{/search}, data-booking-url=@{/booking/trips}">
+
+    <div class="results-head">
+        <h1 th:text="${result.title}">Hà Nội → Hải Phòng</h1>
+        <p th:text="${result.dateLabel}">Thứ Hai, 09/11/2026</p>
+    </div>
+
+    <div id="alertBox" class="m3-alert m3-alert-error" role="alert" th:hidden="${error == null}" th:text="${error}" hidden></div>
+
+    <div class="layout">
+        <!-- ===== Sidebar bộ lọc (AJAX) ===== -->
+        <aside id="sidebar" class="sidebar" aria-label="Bộ lọc">
+            <form id="filterForm">
+                <div class="sidebar-head">
+                    <h2>Bộ lọc</h2>
+                    <button id="resetBtn" type="button" class="link-btn">Xoá bộ lọc</button>
+                </div>
+
+                <fieldset class="filter-group">
+                    <legend>Khoảng giá</legend>
+                    <div class="price-values"><output id="minPriceOut"></output><output id="maxPriceOut"></output></div>
+                    <input id="minPrice" type="range" step="10000" aria-label="Giá thấp nhất"
+                           th:min="${result.priceMin}" th:max="${result.priceMax}"
+                           th:value="${filter.minPrice != null ? filter.minPrice : result.priceMin}">
+                    <input id="maxPrice" type="range" step="10000" aria-label="Giá cao nhất"
+                           th:min="${result.priceMin}" th:max="${result.priceMax}"
+                           th:value="${filter.maxPrice != null ? filter.maxPrice : result.priceMax}">
+                </fieldset>
+
+                <fieldset class="filter-group">
+                    <legend>Loại xe</legend>
+                    <label class="check" th:each="f : ${result.busTypeFacets}" th:classappend="${f.count == 0} ? 'is-empty'">
+                        <input type="checkbox" name="busTypes" th:value="${f.code}" th:checked="${filter.busTypes.contains(f.code)}">
+                        <span class="label" th:text="${f.label}">Giường nằm</span>
+                        <span class="count" th:attr="data-facet=${f.code}" th:text="${f.count}">0</span>
+                    </label>
+                </fieldset>
+
+                <fieldset class="filter-group">
+                    <legend>Giờ khởi hành</legend>
+                    <label class="check" th:each="f : ${result.timeSlotFacets}" th:classappend="${f.count == 0} ? 'is-empty'">
+                        <input type="checkbox" name="timeSlots" th:value="${f.code}" th:checked="${filter.timeSlots.contains(f.code)}">
+                        <span class="label"><span th:text="${f.label}">Sáng</span><small th:text="${f.hint}">05:00 - 11:59</small></span>
+                        <span class="count" th:attr="data-facet=${f.code}" th:text="${f.count}">0</span>
+                    </label>
+                </fieldset>
+
+                <fieldset class="filter-group">
+                    <legend>Đánh giá nhà xe</legend>
+                    <label class="check"><input type="radio" name="minRating" value="" th:checked="${filter.minRating == null}"><span class="label">Tất cả</span></label>
+                    <label class="check"><input type="radio" name="minRating" value="3.5" th:checked="${filter.minRating != null and filter.minRating == 3.5}"><span class="label">Từ 3,5 ★</span></label>
+                    <label class="check"><input type="radio" name="minRating" value="4" th:checked="${filter.minRating != null and filter.minRating == 4.0}"><span class="label">Từ 4,0 ★</span></label>
+                    <label class="check"><input type="radio" name="minRating" value="4.5" th:checked="${filter.minRating != null and filter.minRating == 4.5}"><span class="label">Từ 4,5 ★</span></label>
+                </fieldset>
+            </form>
+        </aside>
+
+        <!-- ===== Danh sách kết quả ===== -->
+        <section class="main-col" aria-label="Kết quả">
+            <button id="sidebarToggle" type="button" class="m3-btn m3-btn-ghost sidebar-toggle" aria-expanded="false" aria-controls="sidebar">
+                Bộ lọc <span id="filterBadge" th:text="${result.activeFilterCount > 0} ? '(' + ${result.activeFilterCount} + ')' : ''"></span>
+            </button>
+
+            <div id="dateStrip" class="date-strip" th:if="${!result.dailyPrices.isEmpty()}" aria-label="Chọn ngày khác">
+                <button type="button" class="day" th:each="d : ${result.dailyPrices}"
+                        th:classappend="${d.selected} ? 'is-active'" th:attr="data-date=${d.date}">
+                    <span class="day-name" th:text="${d.label}">T2 09/11</span>
+                    <span class="day-rel" th:text="${d.relative}"></span>
+                    <span class="day-price" th:text="${d.priceText}">350.000đ</span>
+                </button>
+            </div>
+
+            <div class="toolbar">
+                <p id="resultCount" class="result-count"><strong th:text="${result.totalItems}">0</strong> chuyến xe phù hợp<span th:if="${result.totalBeforeFilters != result.totalItems}" th:text="' (trên tổng ' + ${result.totalBeforeFilters} + ' chuyến)'"></span></p>
+                <div class="sort-tabs" role="group" aria-label="Sắp xếp">
+                    <button type="button" class="sort-tab" data-sort="PRICE_ASC" th:attr="aria-pressed=${result.sortBy == 'PRICE_ASC'}">Giá thấp nhất</button>
+                    <button type="button" class="sort-tab" data-sort="DEPARTURE_ASC" th:attr="aria-pressed=${result.sortBy == 'DEPARTURE_ASC'}">Giờ đi sớm nhất</button>
+                    <button type="button" class="sort-tab" data-sort="RATING_DESC" th:attr="aria-pressed=${result.sortBy == 'RATING_DESC'}">Đánh giá cao nhất</button>
+                </div>
+            </div>
+
+            <div id="tripList" class="trip-list" aria-live="polite">
+                <article class="ticket" th:each="t : ${result.trips}">
+                    <div class="ticket-main">
+                        <div class="ticket-head">
+                            <h3 class="company" th:text="${t.busCompany}">Nhà xe</h3>
+                            <span class="chip" th:text="${t.busTypeLabel}">Giường nằm</span>
+                            <span class="m3-badge" th:each="b : ${t.badges}" th:text="${b}">Giá tốt nhất</span>
+                        </div>
+                        <div class="trip-line">
+                            <div class="trip-time"><strong th:text="${t.departureTimeText}">06:00</strong>
+                                <span th:text="${t.dayOfWeekText} + ', ' + ${t.dateText}">Thứ Hai, 09/11/2026</span></div>
+                            <div class="trip-places"><span class="place" th:text="${t.origin}">Hà Nội</span><span class="arrow" aria-hidden="true"></span><span class="place" th:text="${t.destination}">Hải Phòng</span></div>
+                        </div>
+                        <div class="ticket-meta">
+                            <span class="rating" th:text="'★ ' + ${#numbers.formatDecimal(t.rating, 1, 'COMMA', 1, 'POINT')} + ' nhà xe'">★ 4.5 nhà xe</span>
+                            <span th:classappend="${t.lowSeats} ? 'low'" th:text="${t.seatsText}">Còn 20/45 ghế</span>
+                            <span th:text="'Giờ đi: ' + ${t.timeSlotLabel}">Giờ đi: Sáng</span>
+                        </div>
+                    </div>
+                    <div class="ticket-stub">
+                        <div class="price" th:text="${t.priceText}">350.000đ</div>
+                        <div class="per">mỗi khách</div>
+                        <a class="m3-btn m3-btn-primary" th:if="${!t.soldOut}" th:href="@{/booking/trips/{id}/seats(id=${t.id})}" href="#">Chọn chuyến</a>
+                        <span class="m3-btn m3-btn-ghost" th:if="${t.soldOut}" aria-disabled="true">Hết chỗ</span>
+                    </div>
+                </article>
+
+                <div class="empty-state" th:if="${result.trips.isEmpty()}">
+                    <h3>Không có chuyến phù hợp</h3>
+                    <p>Thử nới khoảng giá, bỏ bớt loại xe hoặc khung giờ, hoặc chọn ngày khác.</p>
+                    <button type="button" class="m3-btn m3-btn-dark" data-action="reset">Xoá bộ lọc</button>
+                </div>
+            </div>
+
+            <nav id="pagination" class="m3-pagination" aria-label="Phân trang"
+                 th:attr="data-page=${result.page}, data-total-pages=${result.totalPages}"></nav>
+        </section>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/account :: footer}"></footer>
+<script th:src="@{/js/common.js}" src="/js/common.js"></script>
+<script th:src="@{/js/search-results.js}" src="/js/search-results.js"></script>
+</body>
+</html>
